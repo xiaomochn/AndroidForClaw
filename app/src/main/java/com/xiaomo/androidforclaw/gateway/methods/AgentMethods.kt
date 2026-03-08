@@ -13,8 +13,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import com.xiaomo.androidforclaw.agent.loop.ProgressUpdate
 
 /**
  * Agent RPC methods implementation with async execution
@@ -168,6 +171,64 @@ Instructions:
             // 获取或创建 session
             val session = sessionManager.getOrCreate(params.sessionKey)
 
+            // 订阅 AgentLoop 进度更新并转发为 Gateway Events
+            val progressJob = agentLoop.progressFlow
+                .onEach { progress ->
+                    when (progress) {
+                        is ProgressUpdate.Iteration -> {
+                            broadcastEvent("agent.iteration", mapOf(
+                                "runId" to runId,
+                                "iteration" to progress.number
+                            ))
+                        }
+                        is ProgressUpdate.ToolCall -> {
+                            broadcastEvent("agent.tool_call", mapOf(
+                                "runId" to runId,
+                                "tool" to progress.name,
+                                "arguments" to progress.arguments
+                            ))
+                        }
+                        is ProgressUpdate.ToolResult -> {
+                            broadcastEvent("agent.tool_result", mapOf(
+                                "runId" to runId,
+                                "tool" to progress.name,
+                                "result" to progress.result,
+                                "duration" to progress.execDuration
+                            ))
+                        }
+                        is ProgressUpdate.Reasoning -> {
+                            // Extended thinking 进度 (可选)
+                            broadcastEvent("agent.thinking", mapOf(
+                                "runId" to runId,
+                                "content" to progress.content.take(200), // 限制长度
+                                "duration" to progress.llmDuration
+                            ))
+                        }
+                        is ProgressUpdate.IterationComplete -> {
+                            // 迭代完成统计 (可选)
+                            Log.d(TAG, "Iteration ${progress.number} complete: ${progress.iterationDuration}ms")
+                        }
+                        is ProgressUpdate.ContextOverflow -> {
+                            broadcastEvent("agent.context_overflow", mapOf(
+                                "runId" to runId,
+                                "message" to progress.message
+                            ))
+                        }
+                        is ProgressUpdate.ContextRecovered -> {
+                            broadcastEvent("agent.context_recovered", mapOf(
+                                "runId" to runId,
+                                "strategy" to progress.strategy,
+                                "attempt" to progress.attempt
+                            ))
+                        }
+                        is ProgressUpdate.Error -> {
+                            // Error 已通过 agent.error 事件发送
+                            Log.w(TAG, "Progress error: ${progress.message}")
+                        }
+                    }
+                }
+                .launchIn(agentScope)
+
             // 执行 agent loop
             val result = agentLoop.run(
                 systemPrompt = systemPrompt,
@@ -175,6 +236,9 @@ Instructions:
                 contextHistory = emptyList(),
                 reasoningEnabled = true
             )
+
+            // 取消进度订阅
+            progressJob.cancel()
 
             // 更新任务状态
             task.status = "completed"

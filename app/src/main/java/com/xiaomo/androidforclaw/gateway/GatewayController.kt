@@ -6,6 +6,13 @@ import com.xiaomo.androidforclaw.agent.session.SessionManager
 import com.xiaomo.androidforclaw.gateway.methods.AgentMethods
 import com.xiaomo.androidforclaw.gateway.methods.HealthMethods
 import com.xiaomo.androidforclaw.gateway.methods.SessionMethods
+import com.xiaomo.androidforclaw.gateway.methods.ModelsMethods
+import com.xiaomo.androidforclaw.gateway.methods.ToolsMethods
+import com.xiaomo.androidforclaw.gateway.methods.SkillsMethods
+import com.xiaomo.androidforclaw.gateway.methods.ConfigMethods
+import com.xiaomo.androidforclaw.agent.skills.SkillsLoader
+import com.xiaomo.androidforclaw.agent.tools.ToolRegistry
+import com.xiaomo.androidforclaw.agent.tools.AndroidToolRegistry
 import com.xiaomo.androidforclaw.gateway.protocol.AgentParams
 import com.xiaomo.androidforclaw.gateway.protocol.AgentWaitParams
 import com.xiaomo.androidforclaw.gateway.security.TokenAuth
@@ -32,6 +39,9 @@ class GatewayController(
     private val context: Context,
     private val agentLoop: AgentLoop,
     private val sessionManager: SessionManager,
+    private val toolRegistry: ToolRegistry,
+    private val androidToolRegistry: AndroidToolRegistry,
+    private val skillsLoader: SkillsLoader,
     private val port: Int = 8765,
     private val authToken: String? = null
 ) {
@@ -43,6 +53,10 @@ class GatewayController(
     private lateinit var agentMethods: AgentMethods
     private lateinit var sessionMethods: SessionMethods
     private lateinit var healthMethods: HealthMethods
+    private lateinit var modelsMethods: ModelsMethods
+    private lateinit var toolsMethods: ToolsMethods
+    private lateinit var skillsMethods: SkillsMethods
+    private lateinit var configMethods: ConfigMethods
 
     var isRunning = false
         private set
@@ -75,6 +89,10 @@ class GatewayController(
                 agentMethods = AgentMethods(context, agentLoop, sessionManager, this)
                 sessionMethods = SessionMethods(sessionManager)
                 healthMethods = HealthMethods()
+                modelsMethods = ModelsMethods(context)
+                toolsMethods = ToolsMethods(toolRegistry, androidToolRegistry)
+                skillsMethods = SkillsMethods(context, skillsLoader)
+                configMethods = ConfigMethods(context)
 
                 // Register Agent methods
                 registerMethod("agent") { params ->
@@ -120,6 +138,50 @@ class GatewayController(
 
                 registerMethod("status") { _ ->
                     healthMethods.status()
+                }
+
+                // Register Models methods
+                registerMethod("models.list") { _ ->
+                    modelsMethods.modelsList()
+                }
+
+                // Register Tools methods
+                registerMethod("tools.catalog") { _ ->
+                    toolsMethods.toolsCatalog()
+                }
+
+                registerMethod("tools.list") { _ ->
+                    toolsMethods.toolsList()
+                }
+
+                // Register Skills methods
+                registerMethod("skills.status") { _ ->
+                    skillsMethods.skillsStatus()
+                }
+
+                registerMethod("skills.list") { _ ->
+                    skillsMethods.skillsList()
+                }
+
+                registerMethod("skills.reload") { _ ->
+                    skillsMethods.skillsReload()
+                }
+
+                registerMethod("skills.install") { params ->
+                    skillsMethods.skillsInstall(params)
+                }
+
+                // Register Config methods
+                registerMethod("config.get") { params ->
+                    configMethods.configGet(params)
+                }
+
+                registerMethod("config.set") { params ->
+                    configMethods.configSet(params)
+                }
+
+                registerMethod("config.reload") { _ ->
+                    configMethods.configReload()
                 }
 
                 Log.i(TAG,"Registered ${getMethodCount()} RPC methods")
