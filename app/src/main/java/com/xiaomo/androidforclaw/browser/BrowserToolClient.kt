@@ -114,24 +114,36 @@ class BrowserToolClient(private val context: Context) {
 
     /**
      * 确保 BrowserForClaw 正在运行
+     * 带超时保护,避免无限等待
      */
     private suspend fun ensureBrowserRunning(): ToolResult {
-        // 1. 检查是否已运行
-        if (checkBrowserHealth()) {
-            Log.d(TAG, "Browser already running")
-            return ToolResult(success = true)
-        }
+        return try {
+            // 整体超时 10 秒
+            withTimeout(10000L) {
+                // 1. 检查是否已运行
+                if (checkBrowserHealth()) {
+                    Log.d(TAG, "Browser already running")
+                    return@withTimeout ToolResult(success = true)
+                }
 
-        // 2. 尝试启动
-        Log.d(TAG, "Browser not running, attempting to start...")
-        val started = startBrowser()
+                // 2. 尝试启动
+                Log.d(TAG, "Browser not running, attempting to start...")
+                val started = startBrowser()
 
-        return if (started) {
-            ToolResult(success = true, data = mapOf("message" to "Browser started"))
-        } else {
+                if (started) {
+                    ToolResult(success = true, data = mapOf("message" to "Browser started"))
+                } else {
+                    ToolResult(
+                        success = false,
+                        error = "Failed to start BrowserForClaw. Please ensure it's installed (package: $BROWSER_PACKAGE)"
+                    )
+                }
+            }
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            Log.e(TAG, "Browser startup timeout")
             ToolResult(
                 success = false,
-                error = "Failed to start BrowserForClaw. Please ensure it's installed (package: $BROWSER_PACKAGE)"
+                error = "Browser startup timeout (10s). BrowserForClaw may not be installed or not responding."
             )
         }
     }
@@ -148,69 +160,79 @@ class BrowserToolClient(private val context: Context) {
         tool: String,
         args: Map<String, Any?>,
         timeout: Long = DEFAULT_TIMEOUT
-    ): ToolResult = withTimeout(timeout) {
-        withContext(Dispatchers.IO) {
-            // 确保 BrowserForClaw 正在运行
-            val ensureResult = ensureBrowserRunning()
-            if (!ensureResult.success) {
-                return@withContext ensureResult
+    ): ToolResult {
+        return try {
+            withTimeout(timeout) {
+                withContext(Dispatchers.IO) {
+                    // 确保 BrowserForClaw 正在运行
+                    val ensureResult = ensureBrowserRunning()
+                    if (!ensureResult.success) {
+                        return@withContext ensureResult
+                    }
+
+                    try {
+                        Log.d(TAG, "执行工具: $tool")
+                        Log.d(TAG, "参数: $args")
+
+                        // 构建 JSON 请求
+                        val requestJson = JSONObject().apply {
+                            put("tool", tool)
+                            put("args", JSONObject(args))
+                        }
+
+                        Log.d(TAG, "请求 JSON: $requestJson")
+
+                        // 构建 HTTP 请求
+                        val requestBody = requestJson.toString()
+                            .toRequestBody("application/json".toMediaType())
+
+                        val request = Request.Builder()
+                            .url(BROWSER_API_URL)
+                            .post(requestBody)
+                            .build()
+
+                        // 发送请求
+                        val response = httpClient.newCall(request).execute()
+                        val responseBody = response.body?.string() ?: ""
+
+                        Log.d(TAG, "响应状态: ${response.code}")
+                        Log.d(TAG, "响应体: ${responseBody.take(500)}")
+
+                        if (!response.isSuccessful) {
+                            return@withContext ToolResult(
+                                success = false,
+                                error = "HTTP ${response.code}: $responseBody"
+                            )
+                        }
+
+                        // 解析响应
+                        val responseJson = JSONObject(responseBody)
+                        val success = responseJson.optBoolean("success", false)
+                        val error = if (responseJson.has("error")) responseJson.optString("error") else null
+                        val dataJson = responseJson.optJSONObject("data")
+
+                        val result = if (success) {
+                            val data = if (dataJson != null) parseJsonToMap(dataJson) else emptyMap()
+                            ToolResult(success = true, data = data)
+                        } else {
+                            ToolResult(success = false, error = error ?: "Unknown error")
+                        }
+
+                        Log.d(TAG, "工具执行结果: success=${result.success}")
+                        result
+
+                    } catch (e: Exception) {
+                        Log.e(TAG, "执行工具失败", e)
+                        ToolResult(success = false, error = "Exception: ${e.message}")
+                    }
+                }
             }
-
-            try {
-                Log.d(TAG, "执行工具: $tool")
-                Log.d(TAG, "参数: $args")
-
-                // 构建 JSON 请求
-                val requestJson = JSONObject().apply {
-                    put("tool", tool)
-                    put("args", JSONObject(args))
-                }
-
-                Log.d(TAG, "请求 JSON: $requestJson")
-
-                // 构建 HTTP 请求
-                val requestBody = requestJson.toString()
-                    .toRequestBody("application/json".toMediaType())
-
-                val request = Request.Builder()
-                    .url(BROWSER_API_URL)
-                    .post(requestBody)
-                    .build()
-
-                // 发送请求
-                val response = httpClient.newCall(request).execute()
-                val responseBody = response.body?.string() ?: ""
-
-                Log.d(TAG, "响应状态: ${response.code}")
-                Log.d(TAG, "响应体: ${responseBody.take(500)}")
-
-                if (!response.isSuccessful) {
-                    return@withContext ToolResult(
-                        success = false,
-                        error = "HTTP ${response.code}: $responseBody"
-                    )
-                }
-
-                // 解析响应
-                val responseJson = JSONObject(responseBody)
-                val success = responseJson.optBoolean("success", false)
-                val error = if (responseJson.has("error")) responseJson.optString("error") else null
-                val dataJson = responseJson.optJSONObject("data")
-
-                val result = if (success) {
-                    val data = if (dataJson != null) parseJsonToMap(dataJson) else emptyMap()
-                    ToolResult(success = true, data = data)
-                } else {
-                    ToolResult(success = false, error = error ?: "Unknown error")
-                }
-
-                Log.d(TAG, "工具执行结果: success=${result.success}")
-                result
-
-            } catch (e: Exception) {
-                Log.e(TAG, "执行工具失败", e)
-                ToolResult(success = false, error = "Exception: ${e.message}")
-            }
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            Log.e(TAG, "Browser tool execution timeout: $tool (timeout=${timeout}ms)")
+            ToolResult(
+                success = false,
+                error = "Browser operation timeout (${timeout}ms). Tool: $tool"
+            )
         }
     }
 
