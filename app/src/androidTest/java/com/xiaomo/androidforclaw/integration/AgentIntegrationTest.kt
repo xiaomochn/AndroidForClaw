@@ -100,7 +100,7 @@ class AgentIntegrationTest {
 
     @Test
     fun testConfigLoader_loadsSuccessfully() {
-        val config = configLoader.loadModelsConfig()
+        val config = configLoader.loadOpenClawConfig()
 
         assertNotNull("配置应该加载成功", config)
         assertTrue("应该有 providers", config.providers.isNotEmpty())
@@ -108,20 +108,15 @@ class AgentIntegrationTest {
 
     @Test
     fun testConfigLoader_findsProviders() {
-        // 先确保配置加载成功
-        val config = configLoader.loadModelsConfig()
-        assertTrue("配置应该有providers", config.providers.isNotEmpty())
-
         // 获取provider
         val provider = configLoader.getProviderConfig("anthropic")
 
-        // 如果测试环境没有配置anthropic,只测试方法不报错
+        // 如果测试环境有配置anthropic,验证其有效性
         if (provider != null) {
             assertNotNull("BaseUrl 不应为空", provider.baseUrl)
-        } else {
-            // 至少应该能调用方法而不崩溃
-            assertNotNull("getProviderConfig 应该返回结果", config.providers.keys.firstOrNull())
+            assertTrue("应该有models", provider.models.isNotEmpty())
         }
+        // 如果没有配置,测试至少不崩溃即可
     }
 
     @Test
@@ -325,7 +320,7 @@ class AgentIntegrationTest {
         val startTime = System.currentTimeMillis()
 
         repeat(iterations) {
-            configLoader.reloadConfig()
+            configLoader.reloadOpenClawConfig()
         }
 
         val elapsed = System.currentTimeMillis() - startTime

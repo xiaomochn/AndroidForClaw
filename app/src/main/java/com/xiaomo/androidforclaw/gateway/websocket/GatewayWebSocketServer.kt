@@ -31,14 +31,15 @@ class GatewayWebSocketServer(
 ) : NanoWSD(null, port) {
 
     private val connections = ConcurrentHashMap<String, WebSocketConnection>()
-    private val handlers = ConcurrentHashMap<String, suspend (Map<String, Any?>?) -> Any?>()
+    private val handlers = ConcurrentHashMap<String, suspend (Any?) -> Any?>()  // OpenClaw: params is Any?
     private val serializer = FrameSerializer()
     private val serverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
      * Register an RPC method handler
+     * OpenClaw Protocol v45: handler accepts Any? params (not just Map)
      */
-    fun registerMethod(method: String, handler: suspend (Map<String, Any?>?) -> Any?) {
+    fun registerMethod(method: String, handler: suspend (Any?) -> Any?) {
         handlers[method] = handler
         Log.d("GatewayWebSocketServer","Registered RPC method: $method")
     }
@@ -99,15 +100,25 @@ class GatewayWebSocketServer(
 
             Log.i("GatewayWebSocketServer","WebSocket opened: $clientId")
 
-            // Send Hello frame
-            val hello = ResponseFrame(
-                type = "response",
-                id = null,
-                result = mapOf(
-                    "protocol" to PROTOCOL_VERSION,
-                    "clientId" to clientId,
-                    "message" to "Welcome to AndroidForClaw Gateway",
-                    "authRequired" to (tokenAuth != null)
+            // Send Hello-Ok frame (OpenClaw Protocol v45)
+            val hello = HelloOkFrame(
+                protocol = PROTOCOL_VERSION,
+                server = ServerInfo(
+                    version = "1.0.0-android",
+                    connId = clientId
+                ),
+                features = Features(
+                    methods = handlers.keys.toList(),
+                    events = listOf("agent.start", "agent.complete", "agent.error")
+                ),
+                snapshot = mapOf(
+                    "authRequired" to (tokenAuth != null),
+                    "platform" to "android"
+                ),
+                policy = Policy(
+                    maxPayload = 10485760,  // 10MB
+                    maxBufferedBytes = 52428800,  // 50MB
+                    tickIntervalMs = 5000
                 )
             )
             connection.send(hello)
@@ -158,7 +169,9 @@ class GatewayWebSocketServer(
                 try {
                     // Check authentication
                     if (tokenAuth != null && !connection.isAuthenticated) {
-                        val token = request.params?.get("token") as? String
+                        @Suppress("UNCHECKED_CAST")
+                        val paramsMap = request.params as? Map<String, Any?>
+                        val token = paramsMap?.get("token") as? String
 
                         if (request.method == "auth" && token != null) {
                             if (tokenAuth.verify(token)) {
@@ -178,7 +191,7 @@ class GatewayWebSocketServer(
                     // Find handler
                     val handler = handlers[request.method]
                     if (handler == null) {
-                        sendError("Unknown method: ${request.method}", request.id)
+                        sendError("Unknown method: ${request.method}", request.id, "METHOD_NOT_FOUND", retryable = false)
                         return@launch
                     }
 
@@ -196,25 +209,31 @@ class GatewayWebSocketServer(
         }
 
         /**
-         * Send response frame
+         * Send response frame (OpenClaw Protocol v45)
          */
         private fun sendResponse(requestId: String, result: Any?) {
             val response = ResponseFrame(
-                type = "response",
                 id = requestId,
-                result = result
+                ok = true,
+                payload = result,
+                error = null
             )
             connection.send(response)
         }
 
         /**
-         * Send error frame
+         * Send error frame (OpenClaw Protocol v45)
          */
-        private fun sendError(message: String, requestId: String? = null) {
+        private fun sendError(message: String, requestId: String? = null, code: String = "INTERNAL_ERROR", retryable: Boolean? = null) {
             val response = ResponseFrame(
-                type = "response",
-                id = requestId,
-                error = mapOf("message" to message)
+                id = requestId ?: "unknown",
+                ok = false,
+                payload = null,
+                error = ErrorShape(
+                    code = code,
+                    message = message,
+                    retryable = retryable
+                )
             )
             connection.send(response)
         }

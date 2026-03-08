@@ -13,7 +13,8 @@ class SessionMethods(
     /**
      * sessions.list() - List all sessions
      */
-    fun sessionsList(params: Map<String, Any?>?): SessionListResult {
+    @Suppress("UNUSED_PARAMETER")
+    fun sessionsList(params: Any?): SessionListResult {
         val keys = sessionManager.getAllKeys()
         val sessions = keys.map { key ->
             val session = sessionManager.get(key)
@@ -30,8 +31,11 @@ class SessionMethods(
     /**
      * sessions.preview() - Preview a session's messages
      */
-    fun sessionsPreview(params: Map<String, Any?>?): SessionPreviewResult {
-        val key = params?.get("key") as? String
+    @Suppress("UNCHECKED_CAST")
+    fun sessionsPreview(params: Any?): SessionPreviewResult {
+        val paramsMap = params as? Map<String, Any?>
+            ?: throw IllegalArgumentException("params must be an object")
+        val key = paramsMap["key"] as? String
             ?: throw IllegalArgumentException("key required")
 
         val session = sessionManager.get(key)
@@ -51,8 +55,11 @@ class SessionMethods(
     /**
      * sessions.reset() - Reset a session
      */
-    fun sessionsReset(params: Map<String, Any?>?): Map<String, Boolean> {
-        val key = params?.get("key") as? String
+    @Suppress("UNCHECKED_CAST")
+    fun sessionsReset(params: Any?): Map<String, Boolean> {
+        val paramsMap = params as? Map<String, Any?>
+            ?: throw IllegalArgumentException("params must be an object")
+        val key = paramsMap["key"] as? String
             ?: throw IllegalArgumentException("key required")
 
         sessionManager.clear(key)
@@ -62,8 +69,11 @@ class SessionMethods(
     /**
      * sessions.delete() - Delete a session
      */
-    fun sessionsDelete(params: Map<String, Any?>?): Map<String, Boolean> {
-        val key = params?.get("key") as? String
+    @Suppress("UNCHECKED_CAST")
+    fun sessionsDelete(params: Any?): Map<String, Boolean> {
+        val paramsMap = params as? Map<String, Any?>
+            ?: throw IllegalArgumentException("params must be an object")
+        val key = paramsMap["key"] as? String
             ?: throw IllegalArgumentException("key required")
 
         sessionManager.clear(key)
@@ -77,21 +87,24 @@ class SessionMethods(
      * - metadata: 更新 session metadata
      * - messages: 操作消息列表 (add, remove, update)
      */
-    fun sessionsPatch(params: Map<String, Any?>?): Map<String, Boolean> {
-        val key = params?.get("key") as? String
+    @Suppress("UNCHECKED_CAST")
+    fun sessionsPatch(params: Any?): Map<String, Boolean> {
+        val paramsMap = params as? Map<String, Any?>
+            ?: throw IllegalArgumentException("params must be an object")
+        val key = paramsMap["key"] as? String
             ?: throw IllegalArgumentException("key required")
 
         val session = sessionManager.get(key)
             ?: throw IllegalArgumentException("Session not found: $key")
 
         // 更新 metadata
-        val metadata = params["metadata"] as? Map<String, Any?>
+        val metadata = paramsMap["metadata"] as? Map<String, Any?>
         if (metadata != null) {
             session.metadata.putAll(metadata)
         }
 
         // 操作消息
-        val messagesOp = params["messages"] as? Map<String, Any?>
+        val messagesOp = paramsMap["messages"] as? Map<String, Any?>
         if (messagesOp != null) {
             val operation = messagesOp["op"] as? String
 

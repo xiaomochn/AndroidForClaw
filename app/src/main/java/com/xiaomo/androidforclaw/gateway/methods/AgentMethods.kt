@@ -202,13 +202,16 @@ Instructions:
     }
 
     /**
-     * 广播事件
+     * 广播事件 (OpenClaw Protocol v45: uses "payload" not "data")
      */
+    private var eventSeq = 0L
+
     private fun broadcastEvent(event: String, data: Any?) {
         try {
             gateway.broadcast(EventFrame(
                 event = event,
-                data = data
+                payload = data,  // OpenClaw uses "payload" not "data"
+                seq = eventSeq++  // Add sequence number
             ))
         } catch (e: Exception) {
             Log.w(TAG, "Failed to broadcast event: $event", e)

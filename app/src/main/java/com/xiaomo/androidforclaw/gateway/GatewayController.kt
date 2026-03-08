@@ -87,7 +87,8 @@ class GatewayController(
                     agentMethods.agentWait(waitParams)
                 }
 
-                registerMethod("agent.identity") { _ ->
+                // OpenClaw uses "agent.identity.get" not "agent.identity"
+                registerMethod("agent.identity.get") { _ ->
                     agentMethods.agentIdentity()
                 }
 
@@ -190,27 +191,32 @@ class GatewayController(
     }
 
     // Helper methods to parse params
+    // OpenClaw Protocol v45: params is Any? (can be Map, List, primitive, etc.)
 
-    private fun parseAgentParams(params: Map<String, Any?>?): AgentParams {
-        requireNotNull(params) { "params required for agent method" }
+    @Suppress("UNCHECKED_CAST")
+    private fun parseAgentParams(params: Any?): AgentParams {
+        val paramsMap = params as? Map<String, Any?>
+            ?: throw IllegalArgumentException("params must be an object for agent method")
 
         return AgentParams(
-            sessionKey = params["sessionKey"] as? String
+            sessionKey = paramsMap["sessionKey"] as? String
                 ?: throw IllegalArgumentException("sessionKey required"),
-            message = params["message"] as? String
+            message = paramsMap["message"] as? String
                 ?: throw IllegalArgumentException("message required"),
-            thinking = params["thinking"] as? String,
-            model = params["model"] as? String
+            thinking = paramsMap["thinking"] as? String,
+            model = paramsMap["model"] as? String
         )
     }
 
-    private fun parseAgentWaitParams(params: Map<String, Any?>?): AgentWaitParams {
-        requireNotNull(params) { "params required for agent.wait method" }
+    @Suppress("UNCHECKED_CAST")
+    private fun parseAgentWaitParams(params: Any?): AgentWaitParams {
+        val paramsMap = params as? Map<String, Any?>
+            ?: throw IllegalArgumentException("params must be an object for agent.wait method")
 
         return AgentWaitParams(
-            runId = params["runId"] as? String
+            runId = paramsMap["runId"] as? String
                 ?: throw IllegalArgumentException("runId required"),
-            timeout = (params["timeout"] as? Number)?.toLong()
+            timeout = (paramsMap["timeout"] as? Number)?.toLong()
         )
     }
 }

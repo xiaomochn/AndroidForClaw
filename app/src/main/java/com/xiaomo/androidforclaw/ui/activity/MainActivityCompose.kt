@@ -639,32 +639,6 @@ fun AboutCard() {
 
             Divider()
 
-            // 版本信息
-            InfoRow(
-                label = "版本",
-                value = "$versionName ($versionCode)"
-            )
-
-            // 作者信息
-            InfoRow(
-                label = "作者",
-                value = "xiaomo",
-                onClick = null
-            )
-
-            // 微信
-            InfoRow(
-                label = "微信",
-                value = "xiaomocn",
-                onClick = {
-                    // 复制到剪贴板
-                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    val clip = android.content.ClipData.newPlainText("WeChat ID", "xiaomocn")
-                    clipboard.setPrimaryClip(clip)
-                    Toast.makeText(context, "微信号已复制", Toast.LENGTH_SHORT).show()
-                }
-            )
-
             // 邮箱
             InfoRow(
                 label = "邮箱",
@@ -685,14 +659,20 @@ fun AboutCard() {
                 }
             )
 
-            Divider()
-
-            // 社区链接
-            Text(
-                text = "加入社区",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
+            // 微信
+            InfoRow(
+                label = "微信",
+                value = "xiaomocn",
+                onClick = {
+                    // 复制到剪贴板
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("WeChat ID", "xiaomocn")
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(context, "微信号已复制", Toast.LENGTH_SHORT).show()
+                }
             )
+
+            Divider()
 
             // 飞书群
             Card(
@@ -724,15 +704,16 @@ fun AboutCard() {
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "加入飞书群",
+                            text = "飞书体验群",
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            text = "体验 AI 手机控制，参与社区讨论",
+                            text = "https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=566r8836-6547-43e0-b6be-d6c4a5b12b74",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                            fontSize = 11.sp
+                            fontSize = 10.sp,
+                            maxLines = 2
                         )
                     }
                 }
@@ -779,13 +760,29 @@ fun AboutCard() {
 
             Divider()
 
-            // 版权信息
-            Text(
-                text = "© 2024-2025 AndroidForClaw\nInspired by OpenClaw",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 10.sp
-            )
+            // 版本和版权信息
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "版本：$versionName ($versionCode)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp
+                )
+                Text(
+                    text = "© 2024-2025 AndroidForClaw",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 10.sp
+                )
+                Text(
+                    text = "Inspired by OpenClaw",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    fontSize = 9.sp
+                )
+            }
         }
     }
 }

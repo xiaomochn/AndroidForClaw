@@ -14,33 +14,89 @@ sealed class Frame {
 
 /**
  * Request Frame - client to server RPC call
+ * Aligned with OpenClaw Protocol v45
  */
 data class RequestFrame(
-    override val type: String = "request",
+    override val type: String = "req",  // OpenClaw uses "req" not "request"
     val id: String,
     val method: String,
-    val params: Map<String, Any?>? = null,
+    val params: Any? = null,  // OpenClaw uses Any? not Map
     val timeout: Long? = null
 ) : Frame()
 
 /**
  * Response Frame - server response to client request
+ * Aligned with OpenClaw Protocol v45
  */
 data class ResponseFrame(
-    override val type: String = "response",
-    val id: String?,
-    val result: Any? = null,
-    val error: Map<String, Any?>? = null
+    override val type: String = "res",  // OpenClaw uses "res" not "response"
+    val id: String,  // Required, not nullable
+    val ok: Boolean,  // NEW: success flag (required in OpenClaw)
+    val payload: Any? = null,  // OpenClaw uses "payload" not "result"
+    val error: ErrorShape? = null  // OpenClaw uses ErrorShape not Map
 ) : Frame()
 
 /**
  * Event Frame - server to client event broadcast
+ * Aligned with OpenClaw Protocol v45
  */
 data class EventFrame(
     override val type: String = "event",
     val event: String,
-    val data: Any? = null
+    val payload: Any? = null,  // OpenClaw uses "payload" not "data"
+    val seq: Long? = null,  // NEW: sequence number for ordering
+    val stateVersion: String? = null  // NEW: state version tracking
 ) : Frame()
+
+/**
+ * Hello-Ok Frame - sent on connection establishment
+ * Aligned with OpenClaw Protocol v45
+ */
+data class HelloOkFrame(
+    override val type: String = "hello-ok",
+    val protocol: Int,
+    val server: ServerInfo,
+    val features: Features,
+    val snapshot: Map<String, Any?>? = null,
+    val policy: Policy
+) : Frame()
+
+/**
+ * Server information in Hello frame
+ */
+data class ServerInfo(
+    val version: String,
+    val connId: String
+)
+
+/**
+ * Available features (methods and events)
+ */
+data class Features(
+    val methods: List<String>,
+    val events: List<String>
+)
+
+/**
+ * Gateway policy configuration
+ */
+data class Policy(
+    val maxPayload: Long = 10485760,  // 10MB
+    val maxBufferedBytes: Long = 52428800,  // 50MB
+    val tickIntervalMs: Long = 5000  // 5 seconds
+)
+
+/**
+ * Error shape - structured error information
+ * Aligned with OpenClaw Protocol v45
+ */
+data class ErrorShape(
+    val code: String,  // Error code (e.g., "METHOD_NOT_FOUND", "INTERNAL_ERROR")
+    val message: String,  // Human-readable error message
+    val details: Any? = null,  // Additional error details
+    val retryable: Boolean? = null,  // Whether the operation can be retried
+    val retryAfterMs: Long? = null  // Suggested retry delay in milliseconds
+)
 
 // ===== Agent Method Types =====
 
