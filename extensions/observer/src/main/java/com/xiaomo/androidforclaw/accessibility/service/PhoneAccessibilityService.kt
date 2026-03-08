@@ -33,6 +33,19 @@ class PhoneAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         AccessibilityBinderService.serviceInstance = this
         Log.d(TAG, "onServiceConnected - Accessibility service ready")
+
+        // 启动前台服务，显示通知
+        try {
+            val intent = Intent(this, com.xiaomo.androidforclaw.accessibility.ForegroundService::class.java)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+            Log.i(TAG, "✅ 前台服务已启动")
+        } catch (e: Exception) {
+            Log.e(TAG, "启动前台服务失败", e)
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -57,6 +70,16 @@ class PhoneAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         AccessibilityBinderService.serviceInstance = null
+
+        // 停止前台服务
+        try {
+            val intent = Intent(this, com.xiaomo.androidforclaw.accessibility.ForegroundService::class.java)
+            stopService(intent)
+            Log.i(TAG, "✅ 前台服务已停止")
+        } catch (e: Exception) {
+            Log.e(TAG, "停止前台服务失败", e)
+        }
+
         Log.d(TAG, "onDestroy - Accessibility service destroyed")
     }
 

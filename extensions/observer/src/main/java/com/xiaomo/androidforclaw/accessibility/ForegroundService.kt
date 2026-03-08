@@ -20,8 +20,8 @@ class ForegroundService : Service() {
     companion object {
         private const val TAG = "AccessibilityForeground"
         private const val NOTIFICATION_ID = 2
-        private const val CHANNEL_ID = "accessibility_service"
-        private const val CHANNEL_NAME = "无障碍服务"
+        private const val CHANNEL_ID = "s4claw_service"
+        private const val CHANNEL_NAME = "S4Claw 服务"
     }
 
     override fun onCreate() {
@@ -50,7 +50,7 @@ class ForegroundService : Service() {
                 CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "提供无障碍和截图功能"
+                description = "S4Claw 正在提供屏幕观察和设备控制功能"
                 setShowBadge(false)
                 enableLights(false)
                 enableVibration(false)
@@ -81,8 +81,8 @@ class ForegroundService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("无障碍服务正在运行")
-            .setContentText("提供截图和设备控制功能")
+            .setContentTitle("S4Claw 正在运行")
+            .setContentText("屏幕观察 · 设备控制")
             .setSmallIcon(android.R.drawable.ic_menu_view)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setShowWhen(true)
