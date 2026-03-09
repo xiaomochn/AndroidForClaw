@@ -1,31 +1,31 @@
 package com.xiaomo.androidforclaw.core
 
 /**
- * 自动测试配置
+ * Auto test configuration
  *
- * 用于配置应用启动后的自动测试行为
+ * Used to configure auto test behavior after application launch
  */
 object AutoTestConfig {
 
     /**
-     * 是否启用自动测试
+     * Whether to enable auto test
      */
-    const val AUTO_TEST_ENABLED = true  // ✅ API 已修复，启用自动测试
+    const val AUTO_TEST_ENABLED = true  // ✅ API fixed, enable auto test
 
     /**
-     * 自动测试延迟（毫秒）
-     * 等待应用完全启动和权限申请完成
+     * Auto test delay (milliseconds)
+     * Wait for app to fully launch and permission requests to complete
      */
     const val AUTO_TEST_DELAY_MS = 5000L
 
     /**
-     * 默认测试应用
+     * Default test app
      */
     const val DEFAULT_TEST_APP_NAME = "淘宝"
     const val DEFAULT_TEST_APP_PACKAGE = "com.taobao.taobao"
 
     /**
-     * 默认测试任务
+     * Default test task
      */
     const val DEFAULT_TEST_TASK = """全面能力测试 - 分阶段执行：
 
@@ -63,57 +63,57 @@ object AutoTestConfig {
         注意：如果遇到权限错误，继续执行后续步骤，最后在报告中标注哪些能力可用"""
 
     /**
-     * 截屏能力配置
+     * Screenshot capability configuration
      */
     object ScreenshotConfig {
         /**
-         * 是否启用截屏
-         * true = 自动截屏观察界面
-         * false = 不截屏，仅通过 UI Tree 观察
+         * Whether to enable screenshot
+         * true = Auto screenshot to observe interface
+         * false = No screenshot, only observe via UI Tree
          */
-        const val ENABLED = false  // 暂时禁用，等待无障碍权限开启
+        const val ENABLED = false  // Temporarily disabled, waiting for accessibility permission
 
         /**
-         * 截屏间隔（毫秒）
-         * 避免截屏过于频繁
+         * Screenshot interval (milliseconds)
+         * Avoid too frequent screenshots
          */
         const val MIN_INTERVAL_MS = 2000L
     }
 
     /**
-     * UI Tree 能力配置
+     * UI Tree capability configuration
      */
     object UITreeConfig {
         /**
-         * 是否启用 UI Tree 获取
-         * true = 获取 UI 层级树
-         * false = 不获取 UI Tree
+         * Whether to enable UI Tree retrieval
+         * true = Get UI hierarchy tree
+         * false = Don't get UI Tree
          */
-        const val ENABLED = false  // 暂时禁用，等待无障碍权限开启
+        const val ENABLED = false  // Temporarily disabled, waiting for accessibility permission
 
         /**
-         * UI Tree 最大深度
-         * 避免 UI Tree 过大
+         * UI Tree max depth
+         * Avoid UI Tree being too large
          */
         const val MAX_DEPTH = 10
 
         /**
-         * 是否包含不可见节点
+         * Whether to include invisible nodes
          */
         const val INCLUDE_INVISIBLE = false
     }
 
     /**
-     * 测试配置
+     * Test configuration
      */
     object TestConfig {
         /**
-         * 最大迭代次数
+         * Maximum iterations
          */
         const val MAX_ITERATIONS = 20
 
         /**
-         * 是否启用 Extended Thinking
+         * Whether to enable Extended Thinking
          */
         const val REASONING_ENABLED = true
 

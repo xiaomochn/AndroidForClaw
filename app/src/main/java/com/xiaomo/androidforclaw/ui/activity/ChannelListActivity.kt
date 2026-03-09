@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.tencent.mmkv.MMKV
 
 /**
- * Channel 列表页面
+ * Channel list page
  */
 class ChannelListActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,12 +38,12 @@ fun ChannelListScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val mmkv = remember { MMKV.defaultMMKV() }
 
-    // 读取 Feishu Channel 启用状态
+    // Read Feishu Channel enabled status
     var feishuEnabled by remember {
         mutableStateOf(mmkv.decodeBool("channel_feishu_enabled", false))
     }
 
-    // 读取 Discord Channel 启用状态
+    // Read Discord Channel enabled status
     var discordEnabled by remember {
         mutableStateOf(mmkv.decodeBool("channel_discord_enabled", false))
     }
@@ -75,31 +75,31 @@ fun ChannelListScreen(onBack: () -> Unit) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Feishu Channel 卡片
+            // Feishu Channel card
             ChannelCard(
                 name = "Feishu (飞书)",
                 description = "飞书群聊和私聊接入",
                 enabled = feishuEnabled,
                 onClick = {
-                    // 跳转到飞书配置页面
+                    // Navigate to Feishu configuration page
                     val intent = Intent(context, FeishuChannelActivity::class.java)
                     context.startActivity(intent)
                 }
             )
 
-            // Discord Channel 卡片
+            // Discord Channel card
             ChannelCard(
                 name = "Discord",
                 description = "Discord 服务器和私聊接入",
                 enabled = discordEnabled,
                 onClick = {
-                    // 跳转到 Discord 配置页面
+                    // Navigate to Discord configuration page
                     val intent = Intent(context, DiscordChannelActivity::class.java)
                     context.startActivity(intent)
                 }
             )
 
-            // 未来可以添加更多 Channel
+            // Future: can add more Channels
             // - WhatsApp Channel
             // - Telegram Channel
             // - Web UI Channel

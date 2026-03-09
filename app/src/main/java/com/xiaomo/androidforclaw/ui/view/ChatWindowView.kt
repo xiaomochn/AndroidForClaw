@@ -19,15 +19,15 @@ import com.draco.ladb.R
 import io.noties.markwon.Markwon
 
 /**
- * 聊天窗口 View - 参考 OpenClaw 设计
+ * Chat window View - Based on OpenClaw design
  *
- * 功能：
- * 1. 实时显示 AI 对话消息
- * 2. 支持 Tool 调用显示（带 badge）
- * 3. 支持推理过程展开/收起
- * 4. 消息复制功能
- * 5. 停止生成按钮
- * 6. 输入框（可选使用）
+ * Features:
+ * 1. Real-time display of AI conversation messages
+ * 2. Support Tool call display (with badge)
+ * 3. Support reasoning process expand/collapse
+ * 4. Message copy function
+ * 5. Stop generation button
+ * 6. Input box (optional)
  */
 class ChatWindowView @JvmOverloads constructor(
     context: Context,
@@ -39,15 +39,15 @@ class ChatWindowView @JvmOverloads constructor(
         private const val TAG = "ChatWindowView"
 
         /**
-         * 清理 Extended Thinking 标签
-         * 移除 <think>...</think> 内容，只保留实际回复
+         * Clean Extended Thinking tags
+         * Remove <think>...</think> content, keep only actual reply
          */
         private fun cleanThinkingTags(content: String): String {
-            // 移除 <think>...</think> 标签及其内容
+            // Remove <think>...</think> tags and content
             var cleaned = content.replace(Regex("<think>.*?</think>", RegexOption.DOT_MATCHES_ALL), "")
-            // 移除可能的单独标签
+            // Remove possible isolated tags
             cleaned = cleaned.replace("<think>", "").replace("</think>", "")
-            // 清理多余空白
+            // Clean extra whitespace
             return cleaned.trim()
         }
     }
@@ -64,13 +64,13 @@ class ChatWindowView @JvmOverloads constructor(
     private lateinit var markwon: Markwon
 
     init {
-        // 初始化 Markwon
+        // Initialize Markwon
         markwon = Markwon.create(context)
         setupViews()
     }
 
     /**
-     * 设置消息列表（用于恢复数据）
+     * Set message list (for data restoration)
      */
     fun setMessages(messageList: MutableList<ChatMessage>) {
         messages = messageList
@@ -82,7 +82,7 @@ class ChatWindowView @JvmOverloads constructor(
     }
 
     /**
-     * 获取当前消息列表
+     * Get current message list
      */
     fun getMessages(): MutableList<ChatMessage> {
         return messages
@@ -99,11 +99,11 @@ class ChatWindowView @JvmOverloads constructor(
             orientation = android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM
         }
 
-        // 创建顶部工具栏
+        // Create top toolbar
         val toolbar = createToolbar()
         addView(toolbar)
 
-        // 创建消息列表
+        // Create message list
         rvMessages = RecyclerView(context).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0).apply {
                 weight = 1f
@@ -113,7 +113,7 @@ class ChatWindowView @JvmOverloads constructor(
         }
         addView(rvMessages)
 
-        // 创建底部输入区
+        // Create bottom input area
         val inputArea = createInputArea()
         addView(inputArea)
 
@@ -136,7 +136,7 @@ class ChatWindowView @JvmOverloads constructor(
             gravity = android.view.Gravity.CENTER_VERTICAL
             elevation = dpToPx(4).toFloat()
 
-            // 标题
+            // Title
             tvChatTitle = TextView(context).apply {
                 layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT).apply {
                     weight = 1f
@@ -148,7 +148,7 @@ class ChatWindowView @JvmOverloads constructor(
             }
             addView(tvChatTitle)
 
-            // 停止按钮
+            // Stop button
             btnStopGeneration = android.widget.ImageView(context).apply {
                 layoutParams = LayoutParams(dpToPx(44), dpToPx(44))
                 setImageResource(android.R.drawable.ic_media_pause)
@@ -159,7 +159,7 @@ class ChatWindowView @JvmOverloads constructor(
             }
             addView(btnStopGeneration)
 
-            // 缩小按钮
+            // Minimize button
             btnMinimize = android.widget.ImageView(context).apply {
                 layoutParams = LayoutParams(dpToPx(44), dpToPx(44)).apply {
                     marginStart = dpToPx(8)
@@ -199,7 +199,7 @@ class ChatWindowView @JvmOverloads constructor(
             gravity = android.view.Gravity.CENTER_VERTICAL
             elevation = dpToPx(8).toFloat()
 
-            // 输入框容器
+            // Input box container
             val inputContainer = LinearLayout(context).apply {
                 layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT).apply {
                     weight = 1f
@@ -229,7 +229,7 @@ class ChatWindowView @JvmOverloads constructor(
             }
             addView(inputContainer)
 
-            // 发送按钮
+            // Send button
             btnSend = android.widget.ImageView(context).apply {
                 layoutParams = LayoutParams(dpToPx(50), dpToPx(50))
                 setImageResource(android.R.drawable.ic_menu_send)
@@ -257,17 +257,17 @@ class ChatWindowView @JvmOverloads constructor(
     private fun setupRecyclerView() {
         adapter = ChatMessageAdapter(context, messages, markwon)
         rvMessages.layoutManager = LinearLayoutManager(context).apply {
-            stackFromEnd = true  // 从底部开始堆叠
+            stackFromEnd = true  // Stack from bottom
         }
         rvMessages.adapter = adapter
 
-        // 自动滚动到最新消息
+        // Auto-scroll to latest message
         adapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
                 rvMessages.smoothScrollToPosition(messages.size - 1)
             }
             override fun onItemRangeChanged(positionStart: Int, itemCount: Int) {
-                // 如果是最后一条消息更新，保持在底部
+                // If last message updated, stay at bottom
                 if (positionStart + itemCount >= messages.size) {
                     rvMessages.smoothScrollToPosition(messages.size - 1)
                 }
@@ -276,14 +276,14 @@ class ChatWindowView @JvmOverloads constructor(
     }
 
     private fun setupListeners() {
-        // 停止生成
+        // Stop generation
         btnStopGeneration.setOnClickListener {
             Log.d(TAG, "停止生成")
             MainEntryNew.cancelCurrentJob(false)
             Toast.makeText(context, "已停止生成", Toast.LENGTH_SHORT).show()
         }
 
-        // 缩小窗口
+        // Minimize window
         btnMinimize.setOnClickListener {
             Log.d(TAG, "缩小按钮被点击")
             try {
@@ -298,7 +298,7 @@ class ChatWindowView @JvmOverloads constructor(
             }
         }
 
-        // 发送按钮
+        // Send button
         btnSend.setOnClickListener {
             val text = etInput.text.toString().trim()
             if (text.isNotEmpty()) {
@@ -309,22 +309,22 @@ class ChatWindowView @JvmOverloads constructor(
     }
 
     /**
-     * 添加消息
+     * Add message
      */
     fun addMessage(message: ChatMessage) {
-        // 清理 Extended Thinking 标签
+        // Clean Extended Thinking tags
         val cleanedMessage = message.copy(content = cleanThinkingTags(message.content))
         messages.add(cleanedMessage)
         adapter.notifyItemInserted(messages.size - 1)
     }
 
     /**
-     * 更新最后一条消息（用于流式输出）
+     * Update last message (for streaming output)
      */
     fun updateLastMessage(content: String) {
         if (messages.isEmpty()) return
         val lastIndex = messages.size - 1
-        // 清理 Extended Thinking 标签
+        // Clean Extended Thinking tags
         val cleanedContent = cleanThinkingTags(content)
         messages[lastIndex] = messages[lastIndex].copy(
             content = cleanedContent,
@@ -334,7 +334,7 @@ class ChatWindowView @JvmOverloads constructor(
     }
 
     /**
-     * 结束最后一条消息的流式输出
+     * Finish last message streaming output
      */
     fun finishLastMessage() {
         if (messages.isEmpty()) return
@@ -344,7 +344,7 @@ class ChatWindowView @JvmOverloads constructor(
     }
 
     /**
-     * 添加 Tool 调用消息
+     * Add Tool call message
      */
     fun addToolCall(toolName: String, args: String, result: String) {
         val message = ChatMessage(
@@ -358,7 +358,7 @@ class ChatWindowView @JvmOverloads constructor(
     }
 
     /**
-     * 清空消息
+     * Clear messages
      */
     fun clearMessages() {
         messages.clear()
@@ -366,10 +366,10 @@ class ChatWindowView @JvmOverloads constructor(
     }
 
     /**
-     * 发送消息（预留接口）
+     * Send message (reserved interface)
      */
     private fun sendMessage(text: String) {
-        // TODO: 实现发送消息功能
+        // TODO: Implement send message functionality
         val message = ChatMessage(
             role = "user",
             content = text,
@@ -380,7 +380,7 @@ class ChatWindowView @JvmOverloads constructor(
     }
 
     /**
-     * 设置缩小按钮监听器
+     * Set minimize button listener
      */
     private var onMinimizeListener: (() -> Unit)? = null
     fun setOnMinimizeListener(listener: () -> Unit) {
@@ -393,19 +393,19 @@ class ChatWindowView @JvmOverloads constructor(
 }
 
 /**
- * 聊天消息数据类
+ * Chat message data class
  */
 data class ChatMessage(
     val role: String,  // "user", "assistant", "tool"
     val content: String,
     val timestamp: Long,
-    val toolName: String? = null,  // 如果是 tool 调用，显示 tool 名称
-    val reasoning: String? = null,  // 推理过程（可选）
-    val isStreaming: Boolean = false  // 是否正在流式输出
+    val toolName: String? = null,  // If tool call, show tool name
+    val reasoning: String? = null,  // Reasoning process (optional)
+    val isStreaming: Boolean = false  // Whether streaming output
 )
 
 /**
- * 聊天消息 Adapter
+ * Chat message Adapter
  */
 class ChatMessageAdapter(
     private val context: Context,

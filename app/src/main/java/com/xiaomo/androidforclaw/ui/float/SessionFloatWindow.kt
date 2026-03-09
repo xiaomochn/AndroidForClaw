@@ -14,13 +14,13 @@ import com.xiaomo.androidforclaw.util.MMKVKeys
 import com.tencent.mmkv.MMKV
 
 /**
- * 会话信息悬浮窗管理器
+ * Session info floating window manager
  *
- * 功能：
- * - 仅在主页面不可见时显示
- * - 显示当前会话状态和最新消息
- * - 不支持滚动，仅显示固定内容
- * - 默认关闭，通过 App 内开关控制
+ * Features:
+ * - Only shown when main page is not visible
+ * - Display current session status and latest message
+ * - No scrolling, only fixed content
+ * - Disabled by default, controlled by in-app switch
  */
 object SessionFloatWindow {
     private const val TAG = "SessionFloatWindow"
@@ -31,10 +31,10 @@ object SessionFloatWindow {
     private var sessionInfoTextView: TextView? = null
 
     /**
-     * 初始化悬浮窗配置
+     * Initialize floating window configuration
      */
     fun init(context: Context) {
-        // 从 MMKV 读取开关状态
+        // Read switch status from MMKV
         val mmkv = MMKV.defaultMMKV()
         isEnabled = mmkv.decodeBool(MMKVKeys.FLOAT_WINDOW_ENABLED.key, false)
 
@@ -42,37 +42,37 @@ object SessionFloatWindow {
     }
 
     /**
-     * 设置悬浮窗开关状态
+     * Set floating window switch status
      */
     fun setEnabled(context: Context, enabled: Boolean) {
         isEnabled = enabled
 
-        // 保存到 MMKV
+        // Save to MMKV
         val mmkv = MMKV.defaultMMKV()
         mmkv.encode(MMKVKeys.FLOAT_WINDOW_ENABLED.key, enabled)
 
         Log.d(TAG, "Float window enabled=$enabled")
 
         if (enabled) {
-            // 如果主页面不可见，创建并显示悬浮窗
+            // If main page not visible, create and show floating window
             if (!isMainActivityVisible) {
                 createFloatWindow(context)
             }
         } else {
-            // 关闭时销毁悬浮窗
+            // Destroy floating window when disabled
             dismissFloatWindow()
         }
     }
 
     /**
-     * 获取悬浮窗开关状态
+     * Get floating window switch status
      */
     fun isEnabled(): Boolean {
         return isEnabled
     }
 
     /**
-     * 设置主页面可见性
+     * Set main activity visibility
      */
     fun setMainActivityVisible(visible: Boolean, context: Context) {
         isMainActivityVisible = visible
@@ -84,16 +84,16 @@ object SessionFloatWindow {
         }
 
         if (visible) {
-            // 主页面可见，隐藏悬浮窗
+            // Main page visible, hide floating window
             dismissFloatWindow()
         } else {
-            // 主页面不可见，显示悬浮窗
+            // Main page not visible, show floating window
             createFloatWindow(context)
         }
     }
 
     /**
-     * 更新会话信息
+     * Update session info
      */
     @SuppressLint("SetTextI18n")
     fun updateSessionInfo(title: String, content: String) {
@@ -102,11 +102,11 @@ object SessionFloatWindow {
     }
 
     /**
-     * 创建悬浮窗
+     * Create floating window
      */
     @SuppressLint("InflateParams")
     private fun createFloatWindow(context: Context) {
-        // 检查是否已存在
+        // Check if already exists
         if (EasyFloat.isShow(FLOAT_TAG)) {
             Log.d(TAG, "Float window already exists")
             return
@@ -116,7 +116,7 @@ object SessionFloatWindow {
             EasyFloat.with(context)
                 .setTag(FLOAT_TAG)
                 .setLayout(R.layout.layout_session_float) { view ->
-                    // 初始化视图
+                    // Initialize view
                     sessionInfoTextView = view.findViewById(R.id.tv_session_info)
                     sessionInfoTextView?.text = "等待会话信息..."
                 }
@@ -133,7 +133,7 @@ object SessionFloatWindow {
     }
 
     /**
-     * 销毁悬浮窗
+     * Destroy floating window
      */
     private fun dismissFloatWindow() {
         try {

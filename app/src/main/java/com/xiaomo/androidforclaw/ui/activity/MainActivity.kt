@@ -16,14 +16,14 @@ import com.tencent.mmkv.MMKV
 import kotlinx.coroutines.launch
 
 /**
- * AndroidForClaw 主页
+ * AndroidForClaw Main Activity
  *
- * 映射 OpenClaw CLI 命令到可视化界面:
- * - openclaw status → 状态卡片
- * - openclaw config → 配置页面
- * - openclaw skills → Skills 管理
- * - openclaw gateway → Gateway 控制
- * - openclaw sessions → Session 列表
+ * Maps OpenClaw CLI commands to visual interface:
+ * - openclaw status → Status cards
+ * - openclaw config → Config page
+ * - openclaw skills → Skills management
+ * - openclaw gateway → Gateway control
+ * - openclaw sessions → Session list
  */
 class MainActivity : AppCompatActivity() {
 
@@ -52,9 +52,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupViews() {
-        // 状态卡片点击事件
+        // Status card click events
         binding.apply {
-            // Gateway 卡片
+            // Gateway card
             cardGateway.setOnClickListener {
                 if (isGatewayRunning()) {
                     showGatewayInfo()
@@ -63,43 +63,43 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // 权限卡片
+            // Permissions card
             cardPermissions.setOnClickListener {
                 startActivity(Intent(this@MainActivity, PermissionsActivity::class.java))
             }
 
-            // Skills 卡片
+            // Skills card
             cardSkills.setOnClickListener {
-                // TODO: 打开 Skills 管理页面
+                // TODO: Open Skills management page
                 Toast.makeText(this@MainActivity, "Skills 管理 (开发中)", Toast.LENGTH_SHORT).show()
             }
 
-            // Sessions 卡片
+            // Sessions card
             cardSessions.setOnClickListener {
-                // TODO: 打开 Sessions 列表
+                // TODO: Open Sessions list
                 Toast.makeText(this@MainActivity, "Session 列表 (开发中)", Toast.LENGTH_SHORT).show()
             }
 
-            // 底部导航按钮
+            // Bottom navigation buttons
             btnConfig.setOnClickListener {
                 startActivity(Intent(this@MainActivity, ConfigActivity::class.java))
             }
 
             btnTest.setOnClickListener {
-                // AgentTestActivity已移除
+                // AgentTestActivity removed
                 Toast.makeText(this@MainActivity, "Agent测试功能已废弃", Toast.LENGTH_SHORT).show()
             }
 
             btnLogs.setOnClickListener {
-                // TODO: 查看日志
+                // TODO: View logs
                 Toast.makeText(this@MainActivity, "日志查看 (开发中)", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     /**
-     * 更新状态卡片
-     * 映射 OpenClaw CLI: openclaw status
+     * Update status cards
+     * Maps to OpenClaw CLI: openclaw status
      */
     private fun updateStatusCards() {
         lifecycleScope.launch {
@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 更新 Gateway 状态卡片
+     * Update Gateway status card
      */
     private fun updateGatewayCard() {
         val isRunning = isGatewayRunning()
@@ -132,7 +132,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 更新权限状态卡片
+     * Update permissions status card
      */
     private fun updatePermissionsCard() {
         val accessibility = AccessibilityProxy.isConnected.value == true && AccessibilityProxy.isServiceReady()
@@ -157,11 +157,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 更新 Skills 状态卡片
+     * Update Skills status card
      */
     private fun updateSkillsCard() {
-        // TODO: 从 SkillsLoader 获取实际数据
-        val totalSkills = 8  // 临时数据
+        // TODO: Get actual data from SkillsLoader
+        val totalSkills = 8  // Temporary data
         val alwaysSkills = 3
 
         binding.apply {
@@ -177,7 +177,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 更新 Sessions 状态卡片
+     * Update Sessions status card
      */
     private fun updateSessionsCard() {
         val sessionCount = getSessionCount()
@@ -202,8 +202,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 显示 Gateway 详细信息
-     * 映射 OpenClaw CLI: openclaw gateway status
+     * Show Gateway detailed information
+     * Maps to OpenClaw CLI: openclaw gateway status
      */
     private fun showGatewayInfo() {
         val info = buildString {
@@ -231,7 +231,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 显示权限设置对话框
+     * Show permissions dialog
      */
     private fun showPermissionsDialog() {
         val accessibility = AccessibilityProxy.isConnected.value == true && AccessibilityProxy.isServiceReady()
@@ -266,7 +266,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 请求权限
+     * Request permissions
      */
     private fun requestPermissions() {
         val accessibility = AccessibilityProxy.isConnected.value == true && AccessibilityProxy.isServiceReady()
@@ -275,12 +275,12 @@ class MainActivity : AppCompatActivity() {
 
         when {
             !accessibility -> {
-                // 打开无障碍设置
+                // Open accessibility settings
                 val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                 startActivityForResult(intent, REQUEST_ACCESSIBILITY)
             }
             !overlay -> {
-                // 请求悬浮窗权限
+                // Request overlay permission
                 val intent = Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     android.net.Uri.parse("package:$packageName")
@@ -288,7 +288,7 @@ class MainActivity : AppCompatActivity() {
                 startActivityForResult(intent, REQUEST_OVERLAY)
             }
             !screenCapture -> {
-                // 录屏权限需要在无障碍服务 APK 中授予
+                // Screen recording permission managed by accessibility service APK
                 Toast.makeText(
                     this,
                     "录屏权限由无障碍服务 APK 管理\n请在系统设置中授予",
@@ -302,20 +302,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 检查 Gateway 是否运行
+     * Check if Gateway is running
      */
     private fun isGatewayRunning(): Boolean {
-        // TODO: 实际检查 GatewayService 状态
-        // 临时通过 Application 判断
-        return true  // Gateway 在 Application.onCreate 中启动
+        // TODO: Actually check GatewayService status
+        // Temporary: check via Application
+        return true  // Gateway started in Application.onCreate
     }
 
     /**
-     * 获取活跃 Session 数量
+     * Get active Session count
      */
     private fun getSessionCount(): Int {
-        // TODO: 从 GatewayService 获取实际数据
-        return 0  // 临时返回 0
+        // TODO: Get actual data from GatewayService
+        return 0  // Temporary: return 0
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -323,7 +323,7 @@ class MainActivity : AppCompatActivity() {
 
         when (requestCode) {
             REQUEST_ACCESSIBILITY, REQUEST_OVERLAY -> {
-                // 权限设置返回，刷新状态
+                // Returned from permission settings, refresh status
                 updateStatusCards()
             }
         }

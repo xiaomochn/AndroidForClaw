@@ -26,7 +26,7 @@ import com.xiaomo.androidforclaw.util.LayoutExceptionLogger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
 
-// adb 抓view tree结构 遇到bug
+// adb view tree structure capture encountered bug
 class PhoneAccessibilityService : AccessibilityService() {
 
     companion object {
@@ -34,23 +34,23 @@ class PhoneAccessibilityService : AccessibilityService() {
         @JvmField
         var Accessibility: PhoneAccessibilityService? = null
 
-        // 无障碍权限状态常量
+        // Accessibility permission status constants
         const val STATUS_SYSTEM_DISABLED = "系统无障碍未开启"
         const val STATUS_SERVICE_NOT_ENABLED = "服务未在系统设置中启用"
         const val STATUS_SERVICE_NOT_CONNECTED = "服务未连接"
         const val STATUS_AUTHORIZED = "已授权"
         const val STATUS_CHECK_FAILED = "检查失败"
 
-        // 使用 LiveData 存储无障碍服务状态
+        // Use LiveData to store accessibility service status
         val accessibilityEnabled = MutableLiveData<Boolean>().apply {
-            postValue(false) // 初始状态为 false
+            postValue(false) // Initial state is false
         }
 
-        // 周期监控与节流
+        // Periodic monitoring and throttling
         private val monitorScope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
         /**
-         * 检查无障碍服务是否已开启
+         * Check if accessibility service is enabled
          */
         fun isAccessibilityServiceEnabled(): Boolean {
 //            val isEnabled = Accessibility != null
@@ -107,7 +107,7 @@ class PhoneAccessibilityService : AccessibilityService() {
         }
         
         /**
-         * 检查系统无障碍权限是否已开启
+         * Check if system accessibility permission is enabled
          */
         fun isSystemAccessibilityEnabled(context: Context): Boolean {
             if (accessibilityEnabled.value == true) return true
@@ -139,7 +139,7 @@ class PhoneAccessibilityService : AccessibilityService() {
         }
         
         /**
-         * 获取无障碍权限详细状态
+         * Get detailed accessibility permission status
          */
         fun getAccessibilityStatus(context: Context): String {
             return try {
@@ -181,7 +181,7 @@ class PhoneAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         Accessibility = this
-        accessibilityEnabled.postValue(true) // 直接更新 LiveData
+        accessibilityEnabled.postValue(true) // Directly update LiveData
         Log.d(TAG, "onServiceConnected")
     }
 
@@ -201,13 +201,13 @@ class PhoneAccessibilityService : AccessibilityService() {
     override fun onInterrupt() {
         Log.d(TAG, "onInterrupt")
         Accessibility = null
-        accessibilityEnabled.postValue(false) // 更新 LiveData
+        accessibilityEnabled.postValue(false) // Update LiveData
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
         Log.d(TAG, "onUnbind - 无障碍服务断开")
         Accessibility = null
-        accessibilityEnabled.postValue(false) // 更新 LiveData
+        accessibilityEnabled.postValue(false) // Update LiveData
         return super.onUnbind(intent)
     }
 
@@ -215,18 +215,18 @@ class PhoneAccessibilityService : AccessibilityService() {
         super.onDestroy()
         Log.d(TAG, "onDestroy - 无障碍服务销毁")
         Accessibility = null
-        accessibilityEnabled.postValue(false) // 更新 LiveData
+        accessibilityEnabled.postValue(false) // Update LiveData
     }
 
-    // 保存遍历的全局Index
+    // Save global Index for traversal
     private var globalIndex = 0
 
     fun dumpView(): List<ViewNode> {
-        // 使用 getWindows() 方法获取所有窗口，而不仅仅是当前活动窗口
+        // Use getWindows() to get all windows, not just the current active window
         val windows = this.windows
         if (windows.isEmpty()) {
             Log.w(TAG, "No windows available, trying rootInActiveWindow as fallback")
-            // 尝试使用传统的 rootInActiveWindow 作为备选方案
+            // Try traditional rootInActiveWindow as fallback
             val rootNode = rootInActiveWindow
             if (rootNode != null) {
                 globalIndex = 0
@@ -237,14 +237,14 @@ class PhoneAccessibilityService : AccessibilityService() {
             return emptyList()
         }
 
-        globalIndex = 0  // 每次dump时重置计数
+        globalIndex = 0  // Reset count on each dump
         val nodesList = mutableListOf<ViewNode>()
 
-        // 遍历所有窗口，按Z-order排序，顶层窗口优先
+        // Traverse all windows, sorted by Z-order, top windows first
         val sortedWindows = windows.sortedByDescending { it.layer }
         Log.d(TAG, "Found ${sortedWindows.size} windows")
 
-        // 遍历所有窗口
+        // Traverse all windows
         for ((index, window) in sortedWindows.withIndex()) {
             val rootNode = window.root
             if (rootNode == null) {
@@ -252,7 +252,7 @@ class PhoneAccessibilityService : AccessibilityService() {
                 continue
             }
 
-            // ⚡ 过滤系统窗口
+            // ⚡ Filter system windows
             val windowTitle = window.title?.toString() ?: ""
             if (windowTitle.contains("FloatingRootContainer") ||
                 windowTitle.contains("layout_floating")) {
@@ -279,18 +279,18 @@ class PhoneAccessibilityService : AccessibilityService() {
     private fun traverseNode(node: AccessibilityNodeInfo, nodesList: MutableList<ViewNode>) {
         val rect = Rect()
         node.getBoundsInScreen(rect)
-        
-        // 验证边界矩形是否有效
+
+        // Validate if boundary rectangle is valid
         val isValidRect = rect.left >= 0 && rect.top >= 0 && rect.right > rect.left && rect.bottom > rect.top
-        
+
         if (!isValidRect) {
-            // 边界无效的节点不保存，但继续遍历子节点（子节点可能有效）
+            // Node with invalid bounds is not saved, but continue traversing child nodes (child nodes might be valid)
             val nodeText = node.text?.toString() ?: ""
             val nodeContentDesc = node.contentDescription?.toString() ?: ""
             Log.w(TAG, "traverseNode跳过边界无效的节点: text='$nodeText', contentDesc='$nodeContentDesc', " +
                     "边界=[left=${rect.left}, top=${rect.top}, right=${rect.right}, bottom=${rect.bottom}], " +
                     "可能是ViewPager中未显示的Tab页面节点")
-            // 继续遍历子节点
+            // Continue traversing child nodes
             for (i in 0 until node.childCount) {
                 node.getChild(i)?.let { childNode ->
                     traverseNode(childNode, nodesList)
@@ -298,17 +298,17 @@ class PhoneAccessibilityService : AccessibilityService() {
             }
             return
         }
-        
+
         val centerX = rect.centerX()
         val centerY = rect.centerY()
-        
-        // 验证中心坐标是否有效（非负数）
+
+        // Validate if center coordinates are valid (non-negative)
         if (centerX < 0 || centerY < 0) {
             val nodeText = node.text?.toString() ?: ""
             val nodeContentDesc = node.contentDescription?.toString() ?: ""
             Log.w(TAG, "traverseNode跳过坐标无效的节点: text='$nodeText', contentDesc='$nodeContentDesc', " +
                     "centerX=$centerX, centerY=$centerY, 边界=[left=${rect.left}, top=${rect.top}, right=${rect.right}, bottom=${rect.bottom}]")
-            // 继续遍历子节点
+            // Continue traversing child nodes
             for (i in 0 until node.childCount) {
                 node.getChild(i)?.let { childNode ->
                     traverseNode(childNode, nodesList)
@@ -346,7 +346,7 @@ class PhoneAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * 根据文本查找并点击某个节点
+     * Find and click node by text
      */
     suspend fun clickViewByText(text: String): Boolean {
         val rootNode = rootInActiveWindow ?: return false
@@ -366,12 +366,12 @@ class PhoneAccessibilityService : AccessibilityService() {
             return performLongClick(node)
         }
         Log.d(TAG, "performClick: ${node}")
-        // 如果节点可点击并成功点击，直接返回
+        // If node is clickable and click succeeds, return directly
         if ( node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
             return true
         }
 
-        // 向上查找父节点并尝试点击
+        // Search upward for parent node and try to click
         var parent = node.parent
         while (parent != null) {
             if (parent.isClickable && parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
@@ -380,11 +380,11 @@ class PhoneAccessibilityService : AccessibilityService() {
             parent = parent.parent
         }
 
-        // 设置无障碍焦点和选择状态（对弹窗中的控件特别重要）
+        // Set accessibility focus and selection state (especially important for controls in popups)
         node.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS)
         node.performAction(AccessibilityNodeInfo.ACTION_SELECT)
 
-        // 获取坐标点击
+        // Get coordinates and click
         val rect = Rect()
         node.getBoundsInScreen(rect)
         val centerX = (rect.left + rect.right) / 2
@@ -409,18 +409,18 @@ class PhoneAccessibilityService : AccessibilityService() {
             }
         }, null)
 
-        // 等待结果（带超时）
+        // Wait for result (with timeout)
         return withTimeoutOrNull(500) {
             result.await()
-        } ?: false  // 超时返回 false
+        } ?: false  // Timeout returns false
     }
 
     /**
-     * 通过坐标执行点击操作
-     * @param x 点击的 X 坐标
-     * @param y 点击的 Y 坐标
-     * @param isLongClick 是否长按，默认为 false
-     * @return 点击是否成功
+     * Perform click operation by coordinates
+     * @param x X coordinate for click
+     * @param y Y coordinate for click
+     * @param isLongClick Whether long press, default is false
+     * @return Whether click succeeded
      */
     public suspend fun performClickAt(
         x: Float,

@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * 任务数据管理器
- * 负责管理TaskData的创建、替换和访问
+ * Task data manager
+ * Responsible for managing TaskData creation, replacement and access
  */
 class TaskDataManager {
     companion object {
@@ -27,7 +27,7 @@ class TaskDataManager {
     val currentTaskData: StateFlow<TaskData?> = _currentTaskData.asStateFlow()
 
     /**
-     * 启动新任务，创建新的TaskData
+     * Start new task, create new TaskData
      */
     fun startNewTask(taskId: String,packageName: String) {
         Log.d(TAG, "启动新任务: $taskId")
@@ -36,12 +36,12 @@ class TaskDataManager {
     }
 
     /**
-     * 获取当前任务数据
+     * Get current task data
      */
     fun getCurrentTaskData(): TaskData? = _currentTaskData.value
 
     /**
-     * 清理当前任务数据
+     * Clear current task data
      */
     fun clearCurrentTask() {
         Log.d(TAG, "清理当前任务数据")
@@ -49,7 +49,7 @@ class TaskDataManager {
     }
 
     /**
-     * 检查是否有当前任务
+     * Check if there is a current task
      */
     fun hasCurrentTask(): Boolean = _currentTaskData.value != null
 }

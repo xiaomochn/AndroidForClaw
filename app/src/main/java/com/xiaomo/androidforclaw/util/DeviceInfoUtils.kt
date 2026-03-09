@@ -15,7 +15,7 @@ import android.provider.Settings
 import com.xiaomo.androidforclaw.util.LayoutExceptionLogger
 
 /**
- * 封装返回的应用版本信息对象
+ * Encapsulate returned app version info object
  */
 data class AppVersion(
     val versionName: String,
@@ -23,13 +23,13 @@ data class AppVersion(
 )
 
 /**
- * 设备与应用信息工具类
+ * Device and app info utility class
  */
 object DeviceInfoUtils {
 
     /**
-     * 获取当前应用（调用方包名）的版本信息
-     * @return AppVersion（不会为 null，若无法获取则返回 versionName="unknown", versionCode=-1）
+     * Get current app (caller package name) version info
+     * @return AppVersion (never null, returns versionName="unknown", versionCode=-1 if cannot get)
      */
     fun getCurrentAppVersion(context: Context): AppVersion {
         return getAppVersionInfo(context, context.packageName)
@@ -37,17 +37,17 @@ object DeviceInfoUtils {
     }
 
     /**
-     * 获取指定包名的版本信息
+     * Get version info for specified package name
      * @param context Context
-     * @param targetPackage 要查询的包名
-     * @return AppVersion? 若未安装或异常返回 null
+     * @param targetPackage Package name to query
+     * @return AppVersion? Returns null if not installed or exception
      */
     fun getAppVersionInfo(context: Context, targetPackage: String): AppVersion? {
         return try {
             val pm = context.packageManager
             val packageInfo: PackageInfo =
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    // 从 Android 13 (TIRAMISU) 推荐使用带 flags 的 API
+                    // From Android 13 (TIRAMISU), recommended to use API with flags
                     pm.getPackageInfo(targetPackage, PackageManager.PackageInfoFlags.of(0))
                 } else {
                     @Suppress("DEPRECATION")
@@ -72,7 +72,7 @@ object DeviceInfoUtils {
     }
 
     /**
-     * 判断某个包名是否已安装在设备上
+     * Check if a package name is installed on device
      */
     fun isPackageInstalled(context: Context, packageName: String): Boolean {
         return try {
@@ -93,7 +93,7 @@ object DeviceInfoUtils {
     }
 
     /**
-     * 获取设备的厂商 + 型号，例如："Google Pixel 7" 或 "Vendor 12"
+     * Get device manufacturer + model, e.g.: "Google Pixel 7" or "Vendor 12"
      */
     fun getDeviceModel(): String {
         val manufacturer = Build.MANUFACTURER?.trim()
@@ -110,11 +110,11 @@ object DeviceInfoUtils {
     }
 
     /**
-     * 获取设备名（优先取系统设置里的设备名，若不可用则回退到蓝牙名，再回退到厂商+型号）
-     * 注意：不同厂商/系统对设备名的存储位置不同，因此做多重尝试
+     * Get device name (prioritize device name from system settings, fallback to Bluetooth name, then fallback to manufacturer+model)
+     * Note: Different manufacturers/systems store device name in different locations, so multiple attempts
      */
     fun getDeviceName(context: Context): String {
-        // 1) 尝试从 Settings.Global（部分 ROM 在此存储）
+        // 1) Try from Settings.Global (some ROMs store here)
         try {
             val nameGlobal =
                 Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME)
@@ -124,7 +124,7 @@ object DeviceInfoUtils {
             // ignore
         }
 
-        // 2) 尝试从 Settings.Secure（部分设备/厂商可能在此存储）
+        // 2) Try from Settings.Secure (some devices/manufacturers may store here)
         try {
             val nameSecure = Settings.Secure.getString(context.contentResolver, "device_name")
             if (!nameSecure.isNullOrBlank()) return nameSecure
@@ -137,8 +137,8 @@ object DeviceInfoUtils {
     }
 
     /**
-     * 获取已安装应用的可读名称（应用标签）
-     * @return 应用名（如无法获取返回 null）
+     * Get readable name of installed app (app label)
+     * @return App name (returns null if cannot get)
      */
     fun getAppLabel(context: Context, packageName: String): String? {
         return try {
@@ -152,7 +152,7 @@ object DeviceInfoUtils {
     }
 
     /**
-     * 将 PackageInfo 的版本信息格式化为字符串（便于日志）
+     * Format PackageInfo version info to string (for logging)
      */
     fun formatAppVersionForLog(appVersion: AppVersion?): String {
         return if (appVersion == null) {

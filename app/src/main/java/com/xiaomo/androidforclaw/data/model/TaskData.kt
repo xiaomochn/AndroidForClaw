@@ -1,20 +1,20 @@
 package com.xiaomo.androidforclaw.data.model
 
 /**
- * 任务数据类 - 简化版
+ * Task data class - Simplified version
  *
- * 仅保留运行状态和包名信息。
- * 对话历史使用 Session 管理（agent/session/SessionManager.kt）
+ * Only keeps running state and package name info.
+ * Conversation history managed by Session (agent/session/SessionManager.kt)
  */
 class TaskData(
     val taskId: String,
     var packageName: String
 ) {
-    // ===== 运行状态 =====
+    // ===== Running state =====
     private var _isRunning: Boolean = false
     private var _conversationId: String = ""
 
-    // ===== 状态管理 =====
+    // ===== State management =====
     fun setIsRunning(isRunning: Boolean) {
         _isRunning = isRunning
     }

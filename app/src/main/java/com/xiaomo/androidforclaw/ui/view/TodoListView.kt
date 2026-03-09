@@ -20,8 +20,8 @@ import kotlinx.coroutines.flow.collectLatest
 
 /**
  * TodosView
- * 专门展示 MobileOperationAgent 中的 instructionProgress 内容
- * 使用TaskDataManager和TaskData的Flow进行响应式更新
+ * Specially displays instructionProgress content from MobileOperationAgent
+ * Uses TaskDataManager and TaskData Flow for reactive updates
  */
 class TodosView @JvmOverloads constructor(
     context: Context,
@@ -47,14 +47,14 @@ class TodosView @JvmOverloads constructor(
     }
 
     private fun setupViews() {
-        // 加载布局
+        // Load layout
         inflate(context, R.layout.view_todo_list_simplified, this)
         progressContent = findViewById(R.id.progressContent)
 
-        // 设置初始状态
-        updateProgressDisplay("等待任务开始...")
+        // Set initial state
+        updateProgressDisplay(“等待任务开始...”)
 
-        // 在进度内容后面追加一个“操作后的预期”卡片（静态，不连续更新）
+        // Append an “Expected after operation” card after progress content (static, not continuously updated)
         val parentContainer = progressContent.parent as? LinearLayout ?: this
         expectedContent = TextView(context).apply {
             textSize = 14f
@@ -68,26 +68,26 @@ class TodosView @JvmOverloads constructor(
     private fun setupObservers() {
         Log.d(TAG, "设置TodosView观察者...")
 
-        // ✅ 使用GlobalScope，避免悬浮窗缺少LifecycleOwner的问题
+        // ✅ Use GlobalScope to avoid missing LifecycleOwner issue in floating window
         taskDataCollectJob = kotlinx.coroutines.GlobalScope.launch {
             taskDataManager.currentTaskData.collect { taskData ->
                 Log.d(TAG, "TaskData变化: ${taskData?.taskId}")
 
-                // 取消旧的订阅
+                // Cancel old subscription
                 progressCollectJob?.cancel()
 
                 if (taskData != null) {
-                    // ✅ 修复：每次新任务开始时重置expectedSet标志
+                    // ✅ Fix: Reset expectedSet flag when new task starts
                     expectedSet = false
                     Log.d(TAG, "新任务开始，重置expectedSet标志")
 
-                    // TODO: conversationFlow 已删除（旧架构）
-                    // 新架构使用 SessionManager 管理对话历史，不再在 TaskData 中存储
-                    // 进度信息通过 ProgressUpdate → SessionFloatWindow 显示
+                    // TODO: conversationFlow removed (old architecture)
+                    // New architecture uses SessionManager to manage conversation history, no longer stored in TaskData
+                    // Progress info displayed via ProgressUpdate → SessionFloatWindow
                     updateProgressDisplay("等待任务执行...")
 
-                    // TODO: currentTestCaseFlow 已删除（旧架构概念）
-                    // 新架构中没有预生成的测试用例，不需要显示"操作后的预期"
+                    // TODO: currentTestCaseFlow removed (old architecture concept)
+                    // New architecture has no pre-generated test cases, no need to display "Expected after operation"
                     if (!expectedSet) {
                         post {
                             expectedContent.setMarkdownText("### 操作后的预期\n\n（新架构暂无）")
@@ -95,7 +95,7 @@ class TodosView @JvmOverloads constructor(
                         }
                     }
                 } else {
-                    // TaskData为null时显示默认状态
+                    // Display default state when TaskData is null
                     Log.d(TAG, "TaskData为null，显示默认状态")
                     updateProgressDisplay("等待任务开始...")
                     expectedContent.text = "操作后的预期：\n(等待任务开始)"
