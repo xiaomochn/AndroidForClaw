@@ -220,16 +220,23 @@ class FeishuClient(private val config: FeishuConfig) {
             val json = gson.fromJson(responseBody, JsonObject::class.java)
             val code = json.get("code")?.asInt ?: -1
 
+            Log.d(TAG, "getBotInfo response: $responseBody")
+
             if (code != 0) {
                 val msg = json.get("msg")?.asString ?: "Unknown error"
                 return@withContext Result.failure(Exception("getBotInfo failed: $msg (code: $code)"))
             }
 
-            val data = json.getAsJsonObject("data")?.getAsJsonObject("bot")
-                ?: return@withContext Result.failure(Exception("Missing bot data"))
+            // 飞书 API v3 的响应结构: { code: 0, bot: { activate_status: 2, app_name: "...", open_id: "...", ... }, msg: "ok" }
+            val bot = json.getAsJsonObject("bot")
+            Log.d(TAG, "bot object: $bot")
 
-            val openId = data.get("open_id")?.asString
-            val name = data.get("app_name")?.asString
+            if (bot == null) {
+                return@withContext Result.failure(Exception("Missing bot in response"))
+            }
+
+            val openId = bot.get("open_id")?.asString
+            val name = bot.get("app_name")?.asString
 
             Log.d(TAG, "Got bot info: open_id=$openId, name=$name")
 
