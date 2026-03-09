@@ -1004,9 +1004,10 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
                             // 有 @mention，检查是否 @了机器人
                             val botOpenId = feishuChannel?.getBotOpenId()
                             if (botOpenId == null) {
-                                // 无法获取 bot open_id，只要有 @mention 就通过
-                                Log.w(TAG, "⚠️ 无法获取 bot open_id，任何 @mention 都会被处理")
-                                Log.d(TAG, "✅ 消息包含 @mention（无法验证是否 @机器人）")
+                                // 无法获取 bot open_id，为了安全拒绝消息
+                                Log.w(TAG, "❌ 无法获取 bot open_id，无法验证 @mention，忽略此消息")
+                                Log.w(TAG, "   提示: 检查飞书配置或网络连接，确保能获取机器人信息")
+                                return
                             } else if (botOpenId !in event.mentions) {
                                 // 有 bot open_id，但消息没有 @机器人
                                 Log.d(TAG, "❌ 群消息 @了其他人但没有 @机器人(${botOpenId})，忽略此消息")
