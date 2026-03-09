@@ -45,6 +45,19 @@ class FeishuChannel(private val config: FeishuConfig) {
     // 机器人自己的 open_id (用于检测 @mention)
     private var botOpenId: String? = null
 
+    // 当前对话上下文 (用于 Agent 工具调用)
+    private var currentChatContext: ChatContext? = null
+
+    /**
+     * 当前对话上下文
+     */
+    data class ChatContext(
+        val receiveId: String,
+        val receiveIdType: String = "chat_id",
+        val messageId: String? = null,
+        val timestamp: Long = System.currentTimeMillis()
+    )
+
     /**
      * 获取机器人的 open_id
      */
@@ -56,6 +69,89 @@ class FeishuChannel(private val config: FeishuConfig) {
     fun setBotOpenId(openId: String) {
         botOpenId = openId
         Log.d(TAG, "Bot open_id set: $openId")
+    }
+
+    /**
+     * 更新当前对话上下文 (从消息事件中更新)
+     * 应在收到消息时调用,记录当前对话信息供 Agent 工具使用
+     */
+    fun updateCurrentChatContext(receiveId: String, receiveIdType: String = "chat_id", messageId: String? = null) {
+        currentChatContext = ChatContext(
+            receiveId = receiveId,
+            receiveIdType = receiveIdType,
+            messageId = messageId,
+            timestamp = System.currentTimeMillis()
+        )
+        Log.d(TAG, "Current chat context updated: receiveId=$receiveId, type=$receiveIdType")
+    }
+
+    /**
+     * 获取当前对话上下文
+     */
+    fun getCurrentChatContext(): ChatContext? = currentChatContext
+
+    /**
+     * 发送图片到当前对话
+     * 供 Agent 工具调用 (FeishuSendImageSkill)
+     */
+    suspend fun sendImageToCurrentChat(imageFile: java.io.File): Result<String> {
+        val context = currentChatContext
+        if (context == null) {
+            Log.e(TAG, "No active chat context")
+            return Result.failure(Exception("No active chat context. Cannot determine recipient."))
+        }
+
+        // 检查上下文是否过期 (超过 5 分钟)
+        val ageMs = System.currentTimeMillis() - context.timestamp
+        if (ageMs > 5 * 60 * 1000) {
+            Log.w(TAG, "Chat context is stale (${ageMs}ms old)")
+            return Result.failure(Exception("Chat context is stale. Please send a message first."))
+        }
+
+        return try {
+            val media = com.xiaomo.feishu.messaging.FeishuMedia(config, client)
+
+            // 1. 上传图片
+            Log.d(TAG, "Uploading image: ${imageFile.name} (${imageFile.length()} bytes)")
+            val uploadResult = media.uploadImage(imageFile)
+
+            if (uploadResult.isFailure) {
+                val error = uploadResult.exceptionOrNull()
+                Log.e(TAG, "Failed to upload image", error)
+                return Result.failure(error ?: Exception("Upload failed"))
+            }
+
+            val mediaResult = uploadResult.getOrNull()
+                ?: return Result.failure(Exception("Upload succeeded but no result"))
+
+            val imageKey = mediaResult.key
+
+            Log.d(TAG, "Image uploaded successfully. image_key: $imageKey")
+
+            // 2. 发送图片消息
+            Log.d(TAG, "Sending image to ${context.receiveId} (type: ${context.receiveIdType})")
+            val sendResult = media.sendImage(
+                receiveId = context.receiveId,
+                imageKey = imageKey,
+                receiveIdType = context.receiveIdType
+            )
+
+            if (sendResult.isFailure) {
+                val error = sendResult.exceptionOrNull()
+                Log.e(TAG, "Failed to send image", error)
+                return Result.failure(error ?: Exception("Send failed"))
+            }
+
+            val messageId = sendResult.getOrNull()
+                ?: return Result.failure(Exception("Send succeeded but no message_id"))
+
+            Log.i(TAG, "✅ Image sent successfully. message_id: $messageId")
+            Result.success(messageId)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send image to current chat", e)
+            Result.failure(e)
+        }
     }
 
     /**

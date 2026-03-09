@@ -113,10 +113,13 @@ data class SkillsConfig(
     val workspacePath: String = "/sdcard/.androidforclaw/workspace/skills",  // Workspace skills
 
     @SerializedName("managedPath")
-    val managedPath: String = "/sdcard/.androidforclaw/.skills",  // Managed skills
+    val managedPath: String = "/sdcard/.androidforclaw/skills",  // Managed skills
 
     @SerializedName("autoLoad")
     val autoLoad: List<String> = listOf("mobile-operations"),  // 自动加载的 skills
+
+    @SerializedName("allowBundled")
+    val allowBundled: List<String>? = null,  // 内置技能白名单 (null = 全部允许)
 
     @SerializedName("disabled")
     val disabled: List<String> = emptyList(),  // 禁用的 skills
@@ -125,7 +128,24 @@ data class SkillsConfig(
     val onDemand: Boolean = true,  // 是否按需加载
 
     @SerializedName("cacheEnabled")
-    val cacheEnabled: Boolean = true  // 是否缓存 skills 内容
+    val cacheEnabled: Boolean = true,  // 是否缓存 skills 内容
+
+    @SerializedName("entries")
+    val entries: Map<String, SkillConfig> = emptyMap()  // 技能配置 (对齐 OpenClaw)
+)
+
+/**
+ * 单个技能配置 (对齐 OpenClaw)
+ */
+data class SkillConfig(
+    @SerializedName("enabled")
+    val enabled: Boolean = true,  // 是否启用
+
+    @SerializedName("apiKey")
+    val apiKey: String? = null,  // API Key (或 { source: "env", ... })
+
+    @SerializedName("env")
+    val env: Map<String, String>? = null  // 环境变量注入
 )
 
 /**

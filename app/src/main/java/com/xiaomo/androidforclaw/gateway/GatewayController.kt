@@ -93,7 +93,7 @@ class GatewayController(
                 healthMethods = HealthMethods()
                 modelsMethods = ModelsMethods(context)
                 toolsMethods = ToolsMethods(toolRegistry, androidToolRegistry)
-                skillsMethods = SkillsMethods(context, skillsLoader)
+                skillsMethods = SkillsMethods(context)
                 configMethods = ConfigMethods(context)
 
                 // Register Agent methods
@@ -157,20 +157,74 @@ class GatewayController(
                 }
 
                 // Register Skills methods
-                registerMethod("skills.status") { _ ->
-                    skillsMethods.skillsStatus()
+                registerMethod("skills.status") { params ->
+                    val paramsObj = when (params) {
+                        is com.google.gson.JsonObject -> params
+                        is Map<*, *> -> com.google.gson.Gson().toJsonTree(params).asJsonObject
+                        else -> com.google.gson.JsonObject()
+                    }
+                    val result = skillsMethods.status(paramsObj)
+                    if (result.isSuccess) result.getOrNull() else throw result.exceptionOrNull()!!
                 }
 
-                registerMethod("skills.list") { _ ->
-                    skillsMethods.skillsList()
+                registerMethod("skills.bins") { params ->
+                    val paramsObj = when (params) {
+                        is com.google.gson.JsonObject -> params
+                        is Map<*, *> -> com.google.gson.Gson().toJsonTree(params).asJsonObject
+                        else -> com.google.gson.JsonObject()
+                    }
+                    val result = skillsMethods.bins(paramsObj)
+                    if (result.isSuccess) result.getOrNull() else throw result.exceptionOrNull()!!
                 }
 
-                registerMethod("skills.reload") { _ ->
-                    skillsMethods.skillsReload()
+                registerMethod("skills.reload") { params ->
+                    val paramsObj = when (params) {
+                        is com.google.gson.JsonObject -> params
+                        is Map<*, *> -> com.google.gson.Gson().toJsonTree(params).asJsonObject
+                        else -> com.google.gson.JsonObject()
+                    }
+                    val result = skillsMethods.reload(paramsObj)
+                    if (result.isSuccess) result.getOrNull() else throw result.exceptionOrNull()!!
                 }
 
                 registerMethod("skills.install") { params ->
-                    skillsMethods.skillsInstall(params)
+                    val paramsObj = when (params) {
+                        is com.google.gson.JsonObject -> params
+                        is Map<*, *> -> com.google.gson.Gson().toJsonTree(params).asJsonObject
+                        else -> com.google.gson.JsonObject()
+                    }
+                    val result = skillsMethods.install(paramsObj)
+                    if (result.isSuccess) result.getOrNull() else throw result.exceptionOrNull()!!
+                }
+
+                registerMethod("skills.update") { params ->
+                    val paramsObj = when (params) {
+                        is com.google.gson.JsonObject -> params
+                        is Map<*, *> -> com.google.gson.Gson().toJsonTree(params).asJsonObject
+                        else -> com.google.gson.JsonObject()
+                    }
+                    val result = skillsMethods.update(paramsObj)
+                    if (result.isSuccess) result.getOrNull() else throw result.exceptionOrNull()!!
+                }
+
+                registerMethod("skills.search") { params ->
+                    val paramsObj = when (params) {
+                        is com.google.gson.JsonObject -> params
+                        is Map<*, *> -> com.google.gson.Gson().toJsonTree(params).asJsonObject
+                        else -> com.google.gson.JsonObject()
+                    }
+                    val result = skillsMethods.search(paramsObj)
+                    if (result.isSuccess) result.getOrNull() else throw result.exceptionOrNull()!!
+                }
+
+                registerMethod("skills.uninstall") { params ->
+                    val paramsObj = when (params) {
+                        is com.google.gson.JsonObject -> params
+                        is Map<*, *> -> com.google.gson.Gson().toJsonTree(params).asJsonObject
+                        else -> com.google.gson.JsonObject()
+                    }
+                    val result = skillsMethods.uninstall(paramsObj)
+                    if (result.isSuccess) result.getOrNull() else throw result.exceptionOrNull()!!
                 }
 
                 // Register Config methods

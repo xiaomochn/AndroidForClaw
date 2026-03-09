@@ -28,6 +28,9 @@ import kotlinx.coroutines.withContext
 import com.xiaomo.androidforclaw.gateway.GatewayService
 import com.xiaomo.androidforclaw.gateway.MainEntryAgentHandler
 import com.xiaomo.androidforclaw.gateway.GatewayServer
+import com.xiaomo.androidforclaw.gateway.GatewayController
+import com.xiaomo.androidforclaw.agent.session.SessionManager
+import com.xiaomo.androidforclaw.agent.skills.SkillsLoader
 import com.xiaomo.androidforclaw.config.ConfigLoader
 import com.xiaomo.feishu.FeishuChannel
 import com.xiaomo.feishu.FeishuConfig
@@ -47,6 +50,7 @@ import com.xiaomo.androidforclaw.agent.tools.ToolRegistry
 import com.xiaomo.androidforclaw.agent.tools.AndroidToolRegistry
 import com.xiaomo.androidforclaw.agent.context.ContextBuilder
 import com.xiaomo.androidforclaw.agent.loop.AgentLoop
+import com.xiaomo.androidforclaw.providers.UnifiedLLMProvider
 
 /**
  */
@@ -59,11 +63,23 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
 
         lateinit var application: Application
 
+        // 单例访问
+        val instance: MyApplication
+            get() = application as MyApplication
+
         // Gateway 服务器
         private var gatewayServer: GatewayServer? = null
 
+        // Gateway Controller
+        private var gatewayController: GatewayController? = null
+
         // Feishu Channel
         private var feishuChannel: FeishuChannel? = null
+
+        /**
+         * 获取 Feishu Channel (供工具调用)
+         */
+        fun getFeishuChannel(): FeishuChannel? = feishuChannel
 
         // 消息队列管理器：完全对齐 OpenClaw 的队列机制
         // 支持 interrupt, steer, followup, collect, queue 五种模式
@@ -576,38 +592,57 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
     private fun startGatewayService() {
         try {
             Log.i(TAG, "========================================")
-            Log.i(TAG, "🌐 启动 Gateway 服务...")
+            Log.i(TAG, "🌐 启动 Gateway 服务 (GatewayController)...")
             Log.i(TAG, "========================================")
 
-            val gatewayService = GatewayService(port = 8765)
-            Log.i(TAG, "✅ GatewayService 实例创建成功")
+            // 初始化TaskDataManager
+            val taskDataManager = TaskDataManager.getInstance()
 
-            val agentHandler = MainEntryAgentHandler(application = this)
-            Log.i(TAG, "✅ AgentHandler 创建成功")
+            // 初始化LLM Provider
+            val llmProvider = UnifiedLLMProvider(this)
 
-            gatewayService.setAgentHandler(agentHandler)
-            Log.i(TAG, "✅ AgentHandler 设置成功")
+            // 初始化依赖
+            val toolRegistry = ToolRegistry(this, taskDataManager)
+            val androidToolRegistry = AndroidToolRegistry(this, taskDataManager)
+            val skillsLoader = SkillsLoader(this)
+            val workspaceDir = java.io.File("/sdcard/.androidforclaw/workspace")
+            val sessionManager = SessionManager(workspaceDir)
 
-            // 启动服务（在后台线程）
-            Thread {
-                try {
-                    Log.i(TAG, "📡 开始启动 Gateway WebSocket 服务...")
-                    gatewayService.start()
-                    Log.i(TAG, "========================================")
-                    Log.i(TAG, "✅ Gateway 服务已启动: ws://0.0.0.0:8765")
-                    Log.i(TAG, "========================================")
-                } catch (e: Exception) {
-                    Log.e(TAG, "========================================")
-                    Log.e(TAG, "❌ Gateway 服务启动失败", e)
-                    Log.e(TAG, "========================================")
-                }
-            }.start()
+            // 创建 AgentLoop (需要这些依赖)
+            val agentLoop = AgentLoop(
+                llmProvider = llmProvider,
+                toolRegistry = toolRegistry,
+                androidToolRegistry = androidToolRegistry,
+                contextManager = null,
+                maxIterations = 50,
+                modelRef = null
+            )
 
-            Log.i(TAG, "✅ Gateway 启动线程已创建")
+            // 创建 GatewayController
+            gatewayController = GatewayController(
+                context = this,
+                agentLoop = agentLoop,
+                sessionManager = sessionManager,
+                toolRegistry = toolRegistry,
+                androidToolRegistry = androidToolRegistry,
+                skillsLoader = skillsLoader,
+                port = 8765,
+                authToken = null // 暂时禁用认证
+            )
+
+            Log.i(TAG, "✅ GatewayController 实例创建成功")
+
+            // 启动服务
+            gatewayController?.start()
+
+            Log.i(TAG, "========================================")
+            Log.i(TAG, "✅ Gateway 服务已启动: ws://0.0.0.0:8765")
+            Log.i(TAG, "========================================")
 
         } catch (e: Exception) {
             Log.e(TAG, "========================================")
             Log.e(TAG, "❌ Gateway 初始化失败", e)
+            e.printStackTrace()
             Log.e(TAG, "========================================")
         }
     }
@@ -908,6 +943,14 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
                 Log.i(TAG, "   内容: ${event.content}")
                 Log.i(TAG, "   聊天类型: ${event.chatType}")
                 Log.i(TAG, "   Mentions: ${event.mentions}")
+
+                // 🔄 更新当前对话上下文 (供 Agent 工具使用)
+                feishuChannel?.updateCurrentChatContext(
+                    receiveId = event.chatId,
+                    receiveIdType = "chat_id",
+                    messageId = event.messageId
+                )
+                Log.d(TAG, "✅ 已更新当前对话上下文: chatId=${event.chatId}")
 
                 // ✅ 检查消息权限 (对齐 OpenClaw bot.ts)
                 try {

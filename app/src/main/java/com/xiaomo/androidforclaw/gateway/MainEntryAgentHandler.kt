@@ -180,6 +180,14 @@ class MainEntryAgentHandler(
                 "attempt" to update.attempt
             )
 
+            is ProgressUpdate.LoopDetected -> mapOf(
+                "type" to "loop_detected",
+                "detector" to update.detector,
+                "count" to update.count,
+                "message" to update.message,
+                "critical" to update.critical
+            )
+
             is ProgressUpdate.Error -> mapOf(
                 "type" to "error",
                 "message" to update.message

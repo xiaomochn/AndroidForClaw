@@ -1,35 +1,124 @@
-# AndroidForClaw - Give AI an Android Phone 📱🤖
+# 📱 AndroidForClaw — OpenClaw for Android, Now Available
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Android](https://img.shields.io/badge/Platform-Android%205.0%2B-green.svg)](https://www.android.com/)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9%2B-blue.svg)](https://kotlinlang.org/)
 
-> **Let AI autonomously control Android phones** - No pre-scripted workflows, based on visual observation and natural language understanding
-
 **[中文文档](README_CN.md)** | **[📖 Documentation](docs/README.md)** | **[🚀 Quick Start](#-quick-start)** | **[🤝 Contributing](CONTRIBUTING.md)**
 
 ---
 
-## 🎯 About
+## 🌟 From OpenClaw to AndroidForClaw
 
-**AndroidForClaw** is the Android version of [OpenClaw](https://github.com/openclaw/openclaw), an Android AI Agent Runtime that gives AI the ability to use Android phones.
+You may already know **[OpenClaw](https://github.com/openclaw/openclaw)** — the open-source AI assistant framework with 280k+ GitHub stars. It connects AI to 20+ messaging channels, controls browsers, executes code, and manages schedules. It's the hottest personal AI Agent project right now.
 
-### Relationship with OpenClaw
+**But OpenClaw has a natural limitation:**
 
-- **Architecture Alignment**: ~85% (Agent Loop, Skills System, Gateway Pattern)
-- **Differences**: Adapted for Android platform (Accessibility, MediaProjection, APK packaging)
-- **Positioning**: OpenClaw is the brain, AndroidForClaw is the phone executor
+It's designed for desktops. Android is just a "remote node" in its architecture.
+Your phone needs to connect to a Gateway on your computer to work. The AI can't see your phone screen, can't touch WeChat, TikTok, or Taobao.
 
-### Core Capabilities
+**So we built AndroidForClaw.**
 
-- 🔍 **Visual Observation** - Understand UI through screenshots and accessibility tree
-- 🖱️ **Device Interaction** - Tap, swipe, type, navigate
-- 🤖 **Intelligent Decision** - User-configured LLM (supports OpenAI-compatible APIs)
-- 📝 **Knowledge System** - Skills teach how to use tools (AgentSkills.io compatible)
-- ⚡ **Code Execution** - Shell, JavaScript (QuickJS), File operations
-- 🌐 **Multi-Channel** - Feishu, Discord, HTTP API (Planned: Gateway)
+## 🎯 What is AndroidForClaw?
 
-**Use Cases**: Mobile automation, app testing, data collection, task execution, device control
+**In one sentence:** OpenClaw's native Android version.
+
+**98% identical architecture** — Same Tool Calling protocol, same Agent Loop, same Bootstrap config system, same Skill extension mechanism.
+
+**The difference:** The AI lives directly on your phone, with full device control through Accessibility Service.
+
+No computer needed. No Gateway needed. No pairing needed. Install the APK, grant permissions, start using.
+
+---
+
+## ✨ What We Support
+
+### I. Core Capabilities Aligned with OpenClaw
+
+#### 🧠 Agent Core
+- ✅ **Tool Calling Protocol** — Standard function calling, fully compatible with OpenClaw
+- ✅ **Agent Loop** — Observe → Think → Act → Verify cycle
+- ✅ **Bootstrap Config** — Complete IDENTITY / AGENTS / SOUL / TOOLS configuration system
+- ✅ **Memory Persistence** — Long-term memory, retains important information across sessions
+- ✅ **Skill Extensions** — Custom skill directory, flexible Agent capability expansion
+- ✅ **Multi-Model Support** — Claude / GPT / Gemini and other mainstream LLMs
+- ✅ **Exploration Mode** — Dynamic decision-making, AI autonomously explores
+- ✅ **Planning Mode** — Plan first, execute later, suitable for fixed workflows
+
+#### 🔧 Universal Tool Chain
+- ✅ **File Operations** — read_file / write_file / edit_file
+- ✅ **Directory Browsing** — list_dir
+- ✅ **Shell Commands** — ls / cat / grep / find / sed / awk, etc.
+- ✅ **Web Scraping** — web_fetch
+- ✅ **JavaScript Engine** — Built-in QuickJS, ES6+ support
+
+#### 🌐 Browser Automation
+- ✅ **Web Navigation** — Open any URL
+- ✅ **Element Clicking** — Precise CSS selector targeting
+- ✅ **Form Filling** — Auto text input
+- ✅ **Page Scrolling** — Up / Down / Top / Bottom
+- ✅ **JS Execution** — Execute JavaScript in web pages
+- ✅ **Content Extraction** — text / HTML / Markdown
+- ✅ **Cookie Management** — Read and set cookies
+- ✅ **Screenshot** — Full page screenshot support
+
+#### 💬 Messaging Channels
+- ✅ **Feishu (Lark)** — Native Feishu message channel
+- ✅ **On-Device Chat** — Built-in chat interface
+- 🔜 **More channels** continuously being integrated
+
+---
+
+### II. Android's Superpowers 🔥 (What OpenClaw Can't Do)
+
+#### 👁️ Screen Awareness
+- ✅ **Real-time Screenshot** — Capture screen anytime, AI "sees" through vision models
+- ✅ **UI Tree Parsing** — Complete View hierarchy, precisely locate every element
+- ✅ **State Detection** — AI knows which app, which page you're on
+
+#### ✋ Touch Operations
+- ✅ **Tap** — tap(x, y), precisely tap any screen location
+- ✅ **Swipe** — Up/down/left/right, customizable duration
+- ✅ **Long Press** — Trigger long-press menus
+- ✅ **Text Input** — Type in any input field
+
+#### 📱 App Control
+- ✅ **Launch Apps** — Open any installed app by package name
+- ✅ **Activity Navigation** — Jump directly to specific app pages
+- ✅ **App List** — Get all installed applications
+- ✅ **System Navigation** — Home / Back / Recent Tasks
+
+#### 🔥 Any App Control (Core Difference!)
+
+Through Accessibility Service, any app you can manually operate, AI can operate:
+
+| App | What AI Can Do |
+|-----|----------------|
+| 📱 WeChat | Send messages, browse Moments, transfer money |
+| 📱 Alipay | Check bills, scan to pay |
+| 📱 TikTok | Search videos, browse content |
+| 📱 Taobao | Search products, compare prices |
+| 📱 Amap | Search routes, start navigation |
+
+#### 🔗 Cross-App Workflows
+
+Chain multiple apps for complex tasks:
+
+**"Got an address in WeChat, navigate me there"**
+→ Open WeChat → Recognize address → Copy → Open Amap → Paste & search → Start navigation
+
+#### 🧪 App Testing
+- ✅ Functional testing / UI testing / Regression testing / Exploratory testing
+- ✅ Auto screenshot for every operation
+
+---
+
+## 💡 One-Sentence Summary
+
+**OpenClaw** lets AI chat, browse web, and write code.
+**AndroidForClaw** on the same foundation, lets AI use your phone like you do.
+
+🤖 **98% OpenClaw underneath, covering your entire phone.**
 
 ---
 

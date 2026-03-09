@@ -28,6 +28,7 @@
 |----------|----------------|
 | `src/agents/` | `app/src/main/java/com/xiaomo/androidforclaw/agent/` |
 | `src/agents/run-agent-loop.ts` | `agent/loop/AgentLoop.kt` |
+| `src/agents/tool-loop-detection.ts` | `agent/loop/ToolLoopDetection.kt` ✅ |
 | `src/agents/tool-registry.ts` | `agent/tools/AndroidToolRegistry.kt` |
 | `src/agents/tool-registry.ts` | `agent/tools/ToolRegistry.kt` |
 | `src/agents/skills-loader.ts` | `agent/skills/SkillsLoader.kt` |
@@ -453,3 +454,55 @@
 ---
 
 **最后更新**: 2026-03-08
+
+---
+
+## 📝 最近更新
+
+### 2026-03-08: 工具循环检测系统
+
+**实现**: `agent/loop/ToolLoopDetection.kt`
+
+参考 OpenClaw 的 `src/agents/tool-loop-detection.ts` 实现了完整的工具循环检测机制:
+
+#### 功能特性
+- ✅ 4 种检测器:
+  - `generic_repeat` - 通用重复调用检测
+  - `known_poll_no_progress` - 轮询工具无进展检测
+  - `ping_pong` - 两工具来回调用检测
+  - `global_circuit_breaker` - 全局断路器 (严重循环)
+
+- ✅ 工具调用历史追踪:
+  - Sliding window (30 条记录)
+  - 记录工具名称、参数哈希、结果哈希
+  - 时间戳和 toolCallId
+
+- ✅ 无进展检测:
+  - 通过结果哈希判断相同输入是否产生相同输出
+  - 连续 N 次无进展触发警告/中断
+
+- ✅ 分级处理:
+  - **Warning** (10 次): 注入警告消息,跳过本次调用
+  - **Critical** (20 次): 中断 AgentLoop 执行
+  - **Circuit Breaker** (30 次): 强制停止会话
+
+#### 集成点
+- `AgentLoop.kt`: 在工具执行前检测循环,执行后记录结果
+- `ProgressUpdate.LoopDetected`: 新增进度事件类型
+- `MainEntryNew.kt`: 处理循环检测事件并更新 UI
+- `MainEntryAgentHandler.kt`: 转发循环检测到 Gateway
+- `AgentMethods.kt`: 广播循环检测事件给客户端
+
+#### 测试结果
+测试 case: "截个图发给我"
+- ✅ 权限错误后不再重试,直接给出合理提示
+- ✅ 2 次迭代完成任务 (无任务偏离)
+- ✅ 避免了之前的问题: 成功截图后搜索配置文件
+
+#### 技术细节
+1. **哈希算法**: SHA-256 + 稳定序列化 (排序 Map keys)
+2. **历史管理**: ArrayDeque 实现固定大小滑动窗口
+3. **警告去重**: reportedWarnings Set 避免重复警告
+4. **已知轮询工具**: wait, wait_for_element, command_status
+
+对齐度: 95% (核心逻辑完全对齐,Android 平台特定优化)

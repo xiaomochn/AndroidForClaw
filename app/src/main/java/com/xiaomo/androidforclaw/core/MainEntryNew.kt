@@ -444,6 +444,15 @@ object MainEntryNew {
                 )
             }
 
+            is ProgressUpdate.LoopDetected -> {
+                val logLevel = if (update.critical) "🚨" else "⚠️"
+                Log.w(TAG, "$logLevel Loop detected: ${update.detector} (count: ${update.count})")
+                SessionFloatWindow.updateSessionInfo(
+                    title = "${if (update.critical) "严重" else "警告"}: 循环检测",
+                    content = "${update.detector}: ${update.count} 次"
+                )
+            }
+
             is ProgressUpdate.Error -> {
                 Log.e(TAG, "❌ Error: ${update.message}")
                 SessionFloatWindow.updateSessionInfo(

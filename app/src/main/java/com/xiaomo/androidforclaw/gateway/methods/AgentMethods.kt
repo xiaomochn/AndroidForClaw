@@ -221,6 +221,15 @@ Instructions:
                                 "attempt" to progress.attempt
                             ))
                         }
+                        is ProgressUpdate.LoopDetected -> {
+                            broadcastEvent("agent.loop_detected", mapOf(
+                                "runId" to runId,
+                                "detector" to progress.detector,
+                                "count" to progress.count,
+                                "message" to progress.message,
+                                "critical" to progress.critical
+                            ))
+                        }
                         is ProgressUpdate.Error -> {
                             // Error 已通过 agent.error 事件发送
                             Log.w(TAG, "Progress error: ${progress.message}")

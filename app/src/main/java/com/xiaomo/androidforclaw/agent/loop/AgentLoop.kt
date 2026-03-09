@@ -78,6 +78,9 @@ class AgentLoop(
     @Volatile
     private var shouldStop = false
 
+    // 循环检测器状态
+    private val loopDetectionState = ToolLoopDetection.SessionState()
+
     /**
      * 写入日志到文件和缓冲区
      */
@@ -272,6 +275,79 @@ class AgentLoop(
                             mapOf<String, Any?>()
                         }
 
+                        // ✅ 检测工具调用循环 (在执行前)
+                        val loopDetection = ToolLoopDetection.detectToolCallLoop(
+                            state = loopDetectionState,
+                            toolName = functionName,
+                            params = args
+                        )
+
+                        when (loopDetection) {
+                            is ToolLoopDetection.LoopDetectionResult.LoopDetected -> {
+                                val logLevel = if (loopDetection.level == ToolLoopDetection.LoopDetectionResult.Level.CRITICAL) "🚨" else "⚠️"
+                                writeLog("$logLevel Loop detected: ${loopDetection.detector} (count: ${loopDetection.count})")
+                                writeLog("   ${loopDetection.message}")
+
+                                // Critical 级别: 中断执行
+                                if (loopDetection.level == ToolLoopDetection.LoopDetectionResult.Level.CRITICAL) {
+                                    writeLog("🛑 Critical loop detected, stopping execution")
+                                    Log.e(TAG, "🛑 Critical loop detected: ${loopDetection.message}")
+
+                                    // 添加错误消息到对话
+                                    messages.add(
+                                        toolMessage(
+                                            toolCallId = toolCall.id,
+                                            content = loopDetection.message,
+                                            name = functionName
+                                        )
+                                    )
+
+                                    _progressFlow.emit(ProgressUpdate.LoopDetected(
+                                        detector = loopDetection.detector.name,
+                                        count = loopDetection.count,
+                                        message = loopDetection.message,
+                                        critical = true
+                                    ))
+
+                                    // 中断整个循环
+                                    shouldStop = true
+                                    finalContent = "Task failed: ${loopDetection.message}"
+                                    break
+                                }
+
+                                // Warning 级别: 注入警告但继续执行
+                                writeLog("⚠️ Loop warning injected into conversation")
+                                messages.add(
+                                    toolMessage(
+                                        toolCallId = toolCall.id,
+                                        content = loopDetection.message,
+                                        name = functionName
+                                    )
+                                )
+
+                                _progressFlow.emit(ProgressUpdate.LoopDetected(
+                                    detector = loopDetection.detector.name,
+                                    count = loopDetection.count,
+                                    message = loopDetection.message,
+                                    critical = false
+                                ))
+
+                                // Warning 后跳过本次工具调用
+                                continue
+                            }
+                            ToolLoopDetection.LoopDetectionResult.NoLoop -> {
+                                // 无循环,继续执行
+                            }
+                        }
+
+                        // 记录工具调用 (在执行前)
+                        ToolLoopDetection.recordToolCall(
+                            state = loopDetectionState,
+                            toolName = functionName,
+                            params = args,
+                            toolCallId = toolCall.id
+                        )
+
                         toolsUsed.add(functionName)
 
                         // 发送调用进度更新
@@ -295,6 +371,16 @@ class AgentLoop(
 
                         writeLog("   Result: ${result.success}, ${result.content.take(200)}")
                         writeLog("   ⏱️ 执行耗时: ${execDuration}ms")
+
+                        // 记录工具调用结果 (用于循环检测)
+                        ToolLoopDetection.recordToolCallOutcome(
+                            state = loopDetectionState,
+                            toolName = functionName,
+                            toolParams = args,
+                            result = result.toString(),
+                            error = if (result.success) null else Exception(result.content),
+                            toolCallId = toolCall.id
+                        )
 
                         // 添加结果到消息列表
                         messages.add(
@@ -474,4 +560,12 @@ sealed class ProgressUpdate {
 
     /** 错误 */
     data class Error(val message: String) : ProgressUpdate()
+
+    /** 循环检测 */
+    data class LoopDetected(
+        val detector: String,
+        val count: Int,
+        val message: String,
+        val critical: Boolean
+    ) : ProgressUpdate()
 }

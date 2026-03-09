@@ -1,35 +1,124 @@
-# AndroidForClaw - 让 AI 使用 Android 手机 📱🤖
+# 📱 AndroidForClaw — OpenClaw 的手机版，来了
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Android](https://img.shields.io/badge/Platform-Android%205.0%2B-green.svg)](https://www.android.com/)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9%2B-blue.svg)](https://kotlinlang.org/)
 
-> **让 AI 自主控制 Android 手机** - 无需预设脚本，基于视觉观察和自然语言理解
-
 **[English](README.md)** | **[📖 文档](docs/README.md)** | **[🚀 快速开始](#-快速开始)** | **[🤝 参与贡献](CONTRIBUTING.md)**
 
 ---
 
-## 🎯 项目简介
+## 🌟 从 OpenClaw 说起
 
-**AndroidForClaw** 是 [OpenClaw](https://github.com/openclaw/openclaw) 的 Android 版本，一个 Android AI Agent Runtime，赋予 AI 使用 Android 手机的能力。
+你可能已经知道 **[OpenClaw](https://github.com/openclaw/openclaw)** — GitHub 280k+ Star 的开源 AI 助手框架。它让 AI 连接 20+ 消息渠道、控制浏览器、执行代码、管理日程，是目前最热门的个人 AI Agent 项目。
 
-### 与 OpenClaw 的关系
+**但 OpenClaw 有一个天然的局限：**
 
-- **架构对齐度**: ~85% (Agent Loop, Skills System, Gateway Pattern)
-- **差异**: 适配 Android 平台 (Accessibility, MediaProjection, APK 打包)
-- **定位**: OpenClaw 是大脑，AndroidForClaw 是手机执行器
+它是为桌面设计的。Android 在它的架构里只是一个「远程节点」。
+手机需要连电脑上的 Gateway 才能工作，AI 看不到手机屏幕，碰不到微信、抖音、淘宝。
 
-### 核心能力
+**所以我们做了 AndroidForClaw。**
 
-- 🔍 **视觉观察** - 通过截图和无障碍树理解界面
-- 🖱️ **设备交互** - 点击、滑动、输入、导航
-- 🤖 **智能决策** - 用户自定义 LLM 配置 (支持 OpenAI 兼容 API)
-- 📝 **知识系统** - Skills 教学，知识与代码分离 (AgentSkills.io 兼容)
-- ⚡ **代码执行** - Shell、JavaScript (QuickJS)、文件操作
-- 🌐 **多渠道接入** - 飞书、Discord、HTTP API (规划中: Gateway)
+## 🎯 AndroidForClaw 是什么？
 
-**应用场景**: 移动自动化、应用测试、数据采集、任务执行、设备控制
+**一句话：** OpenClaw 的 Android 原生版本。
+
+**底层架构与 OpenClaw 98% 一致** — 同样的 Tool Calling 协议、同样的 Agent Loop、同样的 Bootstrap 配置体系、同样的 Skill 扩展机制。
+
+**不同的是：** AI 直接住在你的手机里，通过 Accessibility Service 获得了完整的设备控制能力。
+
+不需要电脑，不需要 Gateway，不需要配对。装上 APK，授权，开始用。
+
+---
+
+## ✨ 我们支持什么？
+
+### 一、与 OpenClaw 一致的底层能力
+
+#### 🧠 Agent 核心
+- ✅ **Tool Calling 协议** — 标准函数调用，与 OpenClaw 完全兼容
+- ✅ **Agent Loop** — 观察 → 思考 → 行动 → 验证 循环
+- ✅ **Bootstrap 配置** — 完整的 IDENTITY / AGENTS / SOUL / TOOLS 配置体系
+- ✅ **Memory 持久化** — 长期记忆，跨会话保留重要信息
+- ✅ **Skill 扩展** — 自定义技能目录，灵活扩展 Agent 能力
+- ✅ **多模型支持** — Claude / GPT / Gemini 等主流 LLM
+- ✅ **Exploration 模式** — 动态决策，AI 自主探索
+- ✅ **Planning 模式** — 先规划后执行，适合固定流程
+
+#### 🔧 通用工具链
+- ✅ **文件读写** — read_file / write_file / edit_file
+- ✅ **目录浏览** — list_dir
+- ✅ **Shell 命令** — ls / cat / grep / find / sed / awk 等
+- ✅ **网页抓取** — web_fetch
+- ✅ **JavaScript 引擎** — 内置 QuickJS，支持 ES6+
+
+#### 🌐 浏览器自动化
+- ✅ **网页导航** — 打开任意 URL
+- ✅ **元素点击** — CSS 选择器精确定位
+- ✅ **表单填写** — 自动输入文本
+- ✅ **页面滚动** — 上下 / 顶部 / 底部
+- ✅ **JS 执行** — 在网页中执行 JavaScript
+- ✅ **内容提取** — text / HTML / Markdown
+- ✅ **Cookie 管理** — 读取和设置
+- ✅ **网页截图** — 支持全页截图
+
+#### 💬 消息渠道
+- ✅ **飞书** — 原生飞书消息通道
+- ✅ **设备内对话** — 内置聊天界面
+- 🔜 **更多渠道** 持续接入中
+
+---
+
+### 二、Android 独有的超能力 🔥（OpenClaw 做不到的）
+
+#### 👁️ 屏幕感知
+- ✅ **实时截图** — 随时截取当前屏幕，AI 通过视觉模型「看懂」画面
+- ✅ **UI 树解析** — 完整 View 层级结构，精确定位每个元素
+- ✅ **状态判断** — AI 知道当前在哪个应用、哪个页面
+
+#### ✋ 触控操作
+- ✅ **点击** — tap(x, y)，精确点击屏幕任意位置
+- ✅ **滑动** — swipe，上下左右，支持自定义时长
+- ✅ **长按** — long_press，触发长按菜单
+- ✅ **文本输入** — 在任意输入框中打字
+
+#### 📱 应用控制
+- ✅ **启动应用** — 通过包名打开任意已安装应用
+- ✅ **Activity 跳转** — 直接跳转到应用的指定页面
+- ✅ **应用列表** — 获取所有已安装应用
+- ✅ **系统导航** — Home / 返回 / 最近任务
+
+#### 🔥 任意 App 操控（核心差异！）
+
+通过 Accessibility Service，任何你能手动操作的应用，AI 都能操作：
+
+| App | AI 能做什么 |
+|-----|-------------|
+| 📱 微信 | 发消息、看朋友圈、转账 |
+| 📱 支付宝 | 查账单、扫码付款 |
+| 📱 抖音 | 搜索视频、浏览内容 |
+| 📱 淘宝 | 搜商品、比价格 |
+| 📱 高德 | 搜路线、开导航 |
+
+#### 🔗 跨应用工作流
+
+串联多个 App 完成复杂任务：
+
+**「微信收到一个地址，帮我导航过去」**
+→ 打开微信 → 识别地址 → 复制 → 打开高德 → 粘贴搜索 → 开始导航
+
+#### 🧪 应用测试
+- ✅ 功能测试 / UI 测试 / 回归测试 / 探索测试
+- ✅ 每步操作自动截图留证
+
+---
+
+## 💡 一句话总结
+
+**OpenClaw** 让 AI 能对话、能上网、能写代码。
+**AndroidForClaw** 在同样的底层上，让 AI 还能像你一样用手机。
+
+🤖 **底层 98% OpenClaw，能力覆盖整部手机。**
 
 ---
 

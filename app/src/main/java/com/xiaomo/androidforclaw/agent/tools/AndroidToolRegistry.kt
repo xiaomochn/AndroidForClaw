@@ -69,6 +69,9 @@ class AndroidToolRegistry(
         // 注意：browser 工具使用 BrowserForClaw (Android 应用)，是平台特定的
         register(com.xiaomo.androidforclaw.agent.skills.BrowserForClawSkill(context))
 
+        // === 飞书工具 (Feishu) ===
+        register(FeishuSendImageSkill(context))
+
         Log.d(TAG, "✅ Registered ${tools.size} Android platform tools")
     }
 
