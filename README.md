@@ -1,7 +1,8 @@
 # 📱 AndroidForClaw — OpenClaw for Android, Now Available
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Android](https://img.shields.io/badge/Platform-Android%205.0%2B-green.svg)](https://www.android.com/)
+[![Release](https://img.shields.io/badge/Release-v2.4.3-blue.svg)](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v2.4.3)
+[![Android](https://img.shields.io/badge/Platform-Android%208.0%2B-green.svg)](https://www.android.com/)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9%2B-blue.svg)](https://kotlinlang.org/)
 
 **[中文文档](README_CN.md)** | **[📖 Documentation](docs/README.md)** | **[🚀 Quick Start](#-quick-start)** | **[🤝 Contributing](CONTRIBUTING.md)**
@@ -132,8 +133,12 @@ curl -X POST http://phone-ip:8080/gateway \
 
 # Install a skill from ClawHub
 curl -X POST http://phone-ip:8080/gateway \
-  -d '{"method":"skills.install","params":{"source":"clawhub://twitter"}}'
+  -d '{"method":"skills.install","params":{"name":"x-twitter","installId":"download"}}'
 ```
+
+**📚 Detailed Guide**: [CLAWHUB_GUIDE.md](CLAWHUB_GUIDE.md) - Complete ClawHub integration documentation
+
+⚠️ **Important**: ClawHub API (`clawhub.ai`) is fully operational, even if the website (`clawhub.com`) shows 404.
 
 *📦 npm registry support coming soon!*
 
@@ -152,19 +157,19 @@ curl -X POST http://phone-ip:8080/gateway \
 
 ### Method 1: Download Pre-built APK (Recommended)
 
-**Download**: [releases/](releases/)
+**📥 Latest Release**: [v2.4.3](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v2.4.3) | **📦 All Releases**: [releases/](https://github.com/xiaomochn/AndroidForClaw/releases)
 
 1. **Download APK**
    ```
-   app-release.apk                          (Main app, ~31MB)
-   observer-release.apk                     (S4Claw: Accessibility & Screenshot, ~4.3MB)
-   B4Claw-v1.0.0.apk                        (Browser4Claw: Browser for AI, Optional)
+   androidforclaw-v2.4.3-release.apk                (Main app, ~31MB)
+   androidforclaw-accessibility-v2.4.3-release.apk  (S4Claw: Accessibility & Screenshot, ~4.3MB)
+   B4Claw-v1.0.0.apk                                (Browser4Claw: Browser for AI, Optional)
    ```
 
 2. **Install**
    ```bash
-   adb install app-release.apk
-   adb install observer-release.apk
+   adb install androidforclaw-v2.4.3-release.apk
+   adb install androidforclaw-accessibility-v2.4.3-release.apk
    adb install B4Claw-v1.0.0.apk  # Optional
    ```
 
@@ -461,6 +466,28 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **GitHub Issues**: [Report bugs or request features](https://github.com/xiaomochn/AndroidForClaw/issues)
 - **Discussions**: [Join the conversation](https://github.com/xiaomochn/AndroidForClaw/discussions)
+
+---
+
+## 📋 Version History
+
+### Latest Release: v2.4.3 (2026-03-09)
+
+**🎉 New Features**:
+- ✅ Full ClawHub integration (skills.search, skills.install, skills.status)
+- 🌐 Browser Tool improvements with Baidu search examples
+- 🔐 Unified signing configuration
+
+**🔧 Technical Improvements**:
+- Fixed BrowserForClaw port configuration (8765)
+- Added [CLAWHUB_GUIDE.md](CLAWHUB_GUIDE.md) documentation
+- UI optimizations in ConfigActivity and ChatScreen
+
+**📥 Download**: [v2.4.3 Release](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v2.4.3)
+
+---
+
+**Previous Releases**: [View All Releases](https://github.com/xiaomochn/AndroidForClaw/releases)
 
 ---
 
