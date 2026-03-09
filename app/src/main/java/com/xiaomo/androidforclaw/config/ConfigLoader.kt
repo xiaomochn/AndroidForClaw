@@ -30,10 +30,116 @@ class ConfigLoader(private val context: Context) {
         private const val OPENCLAW_CONFIG_FILE = "openclaw.json"
 
 
-        // Default OpenClaw config
+        // Default OpenClaw config (aligned with openclaw.json.example)
         private val DEFAULT_OPENCLAW_CONFIG = """
         {
           "version": "1.0.0",
+          "meta": {
+            "lastTouchedVersion": "2026.3.2",
+            "lastTouchedAt": "2026-03-07T14:16:33.315Z"
+          },
+          "wizard": {
+            "lastRunAt": "2026-03-07T14:16:33.310Z",
+            "lastRunVersion": "2026.3.2",
+            "lastRunCommand": "doctor",
+            "lastRunMode": "local"
+          },
+          "browser": {
+            "defaultProfile": "openclaw"
+          },
+          "models": {
+            "providers": {
+              "openrouter": {
+                "baseUrl": "https://openrouter.ai/api/v1",
+                "apiKey": "${'$'}{OPENROUTER_API_KEY}",
+                "api": "openai-completions",
+                "models": [
+                  {
+                    "id": "anthropic/claude-opus-4-6",
+                    "name": "Claude 4.6",
+                    "reasoning": false,
+                    "input": ["text"],
+                    "contextWindow": 200000,
+                    "maxTokens": 8192
+                  }
+                ]
+              }
+            }
+          },
+          "agents": {
+            "defaults": {
+              "model": {
+                "primary": "openrouter/anthropic/claude-opus-4-6"
+              }
+            }
+          },
+          "commands": {
+            "native": "auto",
+            "nativeSkills": "auto",
+            "restart": true,
+            "ownerDisplay": "raw"
+          },
+          "hooks": {
+            "internal": {
+              "enabled": true,
+              "entries": {
+                "session-memory": {
+                  "enabled": true
+                }
+              }
+            }
+          },
+          "channels": {
+            "imessage": {
+              "enabled": false,
+              "dmPolicy": "pairing",
+              "groupPolicy": "allowlist"
+            },
+            "feishu": {
+              "accounts": {
+                "default": {
+                  "enabled": false,
+                  "appId": "${'$'}{FEISHU_APP_ID}",
+                  "appSecret": "${'$'}{FEISHU_APP_SECRET}",
+                  "dmPolicy": "open",
+                  "allowFrom": ["*"]
+                }
+              }
+            }
+          },
+          "gateway": {
+            "mode": "local",
+            "port": 8080,
+            "controlUi": {
+              "allowedOrigins": ["null"]
+            },
+            "auth": {
+              "mode": "token",
+              "token": "${'$'}{GATEWAY_TOKEN}"
+            }
+          },
+          "messages": {
+            "tts": {
+              "auto": "always",
+              "provider": "edge",
+              "edge": {
+                "enabled": true,
+                "voice": "zh-CN-XiaoxiaoNeural",
+                "lang": "zh-CN",
+                "outputFormat": "audio-24khz-48kbitrate-mono-mp3"
+              }
+            }
+          },
+          "plugins": {
+            "entries": {
+              "feishu": {
+                "enabled": true
+              },
+              "feishu-swarm": {
+                "enabled": true
+              }
+            }
+          },
           "thinking": {
             "enabled": true,
             "budgetTokens": 10000,
@@ -43,66 +149,11 @@ class ConfigLoader(private val context: Context) {
           "agent": {
             "name": "androidforclaw",
             "maxIterations": 20,
-            "defaultModel": "ppio/pa/claude-opus-4-6",
+            "defaultModel": "openrouter/anthropic/claude-opus-4-6",
             "timeout": 300000,
             "retryOnError": true,
             "maxRetries": 3,
             "mode": "exploration"
-          },
-          "models": {
-            "mode": "merge",
-            "providers": {
-              "anthropic": {
-                "baseUrl": "https://openrouter.ai/api/v1",
-                "apiKey": "${'$'}{ANTHROPIC_API_KEY}",
-                "api": "anthropic-messages",
-                "authHeader": true,
-                "models": [
-                  {
-                    "id": "ppio/pa/claude-opus-4-6",
-                    "name": "Claude Opus 4.6",
-                    "reasoning": true,
-                    "input": ["text", "image"],
-                    "cost": {
-                      "input": 15.0,
-                      "output": 75.0,
-                      "cacheRead": 1.5,
-                      "cacheWrite": 18.75
-                    },
-                    "contextWindow": 200000,
-                    "maxTokens": 16384
-                  },
-                  {
-                    "id": "ppio/pa/claude-sonnet-4-6",
-                    "name": "Claude Sonnet 4.6",
-                    "reasoning": true,
-                    "input": ["text", "image"],
-                    "cost": {
-                      "input": 3.0,
-                      "output": 15.0,
-                      "cacheRead": 0.3,
-                      "cacheWrite": 3.75
-                    },
-                    "contextWindow": 200000,
-                    "maxTokens": 16384
-                  },
-                  {
-                    "id": "ppio/pa/claude-sonnet-4-5-20250929",
-                    "name": "Claude Sonnet 4.5",
-                    "reasoning": true,
-                    "input": ["text", "image"],
-                    "cost": {
-                      "input": 3.0,
-                      "output": 15.0,
-                      "cacheRead": 0.3,
-                      "cacheWrite": 3.75
-                    },
-                    "contextWindow": 200000,
-                    "maxTokens": 8192
-                  }
-                ]
-              }
-            }
           },
           "skills": {
             "bundledPath": "assets/skills",
