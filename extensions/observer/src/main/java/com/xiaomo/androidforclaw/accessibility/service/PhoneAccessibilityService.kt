@@ -50,18 +50,9 @@ class PhoneAccessibilityService : AccessibilityService() {
             Log.e(TAG, "启动 AccessibilityBinderService 失败", e)
         }
 
-        // 启动前台服务，显示通知
-        try {
-            val intent = Intent(this, com.xiaomo.androidforclaw.accessibility.ForegroundService::class.java)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
-            Log.i(TAG, "✅ 前台服务已启动")
-        } catch (e: Exception) {
-            Log.e(TAG, "启动前台服务失败", e)
-        }
+        // 不在无障碍服务连接时启动前台服务
+        // 前台服务只在真正需要截图时由 MediaProjectionHelper 启动
+        Log.i(TAG, "✅ 无障碍服务已连接 (前台服务将在需要时启动)")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
