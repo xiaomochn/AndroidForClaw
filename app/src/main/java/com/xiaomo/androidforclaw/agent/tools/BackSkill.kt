@@ -8,7 +8,7 @@ import com.xiaomo.androidforclaw.providers.ToolDefinition
 
 /**
  * Back Skill
- * 按下返回键
+ * Press back button
  */
 class BackSkill : Skill {
     companion object {
@@ -45,7 +45,7 @@ class BackSkill : Skill {
                 return SkillResult.error("Back button press failed")
             }
 
-            // 等待页面返回动画
+            // Wait for page return animation
             kotlinx.coroutines.delay(150)
 
             SkillResult.success(

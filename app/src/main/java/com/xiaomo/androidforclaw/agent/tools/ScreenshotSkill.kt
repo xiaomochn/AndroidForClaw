@@ -10,13 +10,13 @@ import kotlinx.coroutines.delay
 
 /**
  * Screenshot Skill
- * 截取当前屏幕 + UI 树（完整信息）
+ * Capture current screen + UI tree (complete information)
  *
- * 注意：此工具开销较大（需要截图 + UI 树），请优先使用 get_view_tree。
- * 仅在以下情况使用：
- * - 需要查看视觉信息（颜色、图标、图片）
- * - 操作失败需要视觉确认
- * - UI 树信息不足
+ * Note: This tool has high overhead (requires screenshot + UI tree), please use get_view_tree first.
+ * Only use in the following cases:
+ * - Need to view visual information (colors, icons, images)
+ * - Operation failed and needs visual confirmation
+ * - UI tree information is insufficient
  */
 class ScreenshotSkill(private val context: Context) : Skill {
     companion object {
@@ -60,10 +60,10 @@ class ScreenshotSkill(private val context: Context) : Skill {
     override suspend fun execute(args: Map<String, Any?>): SkillResult {
         Log.d(TAG, "Taking screenshot with UI tree...")
 
-        // 截图功能现在总是启用，由 MediaProjection 权限控制
+        // Screenshot function is always enabled, controlled by MediaProjection permission
 
         return try {
-            // 1. 获取 UI 树（总是启用）
+            // 1. Get UI tree (always enabled)
             val (originalNodes, processedNodes) = run {
                 val result = DeviceController.detectIcons(context)
                 if (result == null) {
@@ -75,11 +75,11 @@ class ScreenshotSkill(private val context: Context) : Skill {
             }
             Log.d(TAG, "UI tree captured: ${processedNodes.size} nodes")
 
-            // 2. 短暂延迟，确保 UI 稳定
-            // ⚡ 优化：减少到 50ms
+            // 2. Brief delay to ensure UI stability
+            // ⚡ Optimization: reduce to 50ms
             delay(50)
 
-            // 3. 截图
+            // 3. Take screenshot
             val screenshotResult = DeviceController.getScreenshot(context)
             if (screenshotResult == null) {
                 return SkillResult.error("Screenshot failed: result is null")
@@ -88,7 +88,7 @@ class ScreenshotSkill(private val context: Context) : Skill {
             val (bitmap, path) = screenshotResult
             Log.d(TAG, "Screenshot captured: ${bitmap.width}x${bitmap.height}, path: $path")
 
-            // 4. 组合输出
+            // 4. Combine output
             val output = buildString {
                 appendLine("【截图信息】")
                 appendLine("分辨率: ${bitmap.width}x${bitmap.height}")

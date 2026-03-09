@@ -11,7 +11,7 @@ import com.xiaomo.androidforclaw.providers.ToolDefinition
 
 /**
  * Open App Skill
- * 打开指定应用
+ * Open a specified app
  */
 class OpenAppSkill(private val context: Context) : Skill {
     companion object {
@@ -54,8 +54,8 @@ class OpenAppSkill(private val context: Context) : Skill {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
 
-                // 等待应用启动（应用启动通常需要 1-2 秒）
-                // ⚡ 优化：减少到 1 秒，配合后续的 get_view_tree 来确认启动完成
+                // Wait for app launch (app launch typically takes 1-2 seconds)
+                // ⚡ Optimization: reduce to 1 second, use get_view_tree to confirm launch completion
                 Log.d(TAG, "Waiting for app to launch...")
                 kotlinx.coroutines.delay(1000)
 

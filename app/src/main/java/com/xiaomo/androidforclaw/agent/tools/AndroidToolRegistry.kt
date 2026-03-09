@@ -11,14 +11,14 @@ import com.xiaomo.androidforclaw.providers.ToolDefinition
 /**
  * Android Tool Registry
  *
- * 管理 Android 平台特定的工具 (Platform-specific tools)
+ * Manages Android platform-specific tools (Platform-specific tools)
  *
- * 与 OpenClaw 架构对齐：
- * - ToolRegistry: 通用工具 (read, write, exec, web_fetch)
- * - AndroidToolRegistry: Android 平台工具 (tap, screenshot, open_app, memory)
+ * Aligned with OpenClaw architecture:
+ * - ToolRegistry: Universal tools (read, write, exec, web_fetch)
+ * - AndroidToolRegistry: Android platform tools (tap, screenshot, open_app, memory)
  * - SkillsLoader: Markdown Skills (mobile-operations.md)
  *
- * 参考: OpenClaw 的 pi-tools.ts 中的平台特定能力
+ * Reference: Platform-specific capabilities in OpenClaw's pi-tools.ts
  */
 class AndroidToolRegistry(
     private val context: Context,
@@ -38,45 +38,45 @@ class AndroidToolRegistry(
     }
 
     /**
-     * 注册 Android 平台特定工具
+     * Register Android platform-specific tools
      */
     private fun registerAndroidTools() {
-        // === 观察类工具 (Observation) ===
-        register(GetViewTreeSkill(context))  // 获取 UI 树（轻量）
-        register(ScreenshotSkill(context))   // 截图（完整）
+        // === Observation tools (Observation) ===
+        register(GetViewTreeSkill(context))  // Get UI tree (lightweight)
+        register(ScreenshotSkill(context))   // Screenshot (complete)
 
-        // === 交互类工具 (Interaction) ===
-        register(TapSkill())                 // 点击
-        register(SwipeSkill())               // 滑动
-        register(TypeSkill(context))         // 输入
-        register(LongPressSkill())           // 长按
+        // === Interaction tools (Interaction) ===
+        register(TapSkill())                 // Tap
+        register(SwipeSkill())               // Swipe
+        register(TypeSkill(context))         // Type
+        register(LongPressSkill())           // Long press
 
-        // === 导航类工具 (Navigation) ===
-        register(HomeSkill())                // 回桌面
-        register(BackSkill())                // 返回
-        register(OpenAppSkill(context))      // 打开应用
+        // === Navigation tools (Navigation) ===
+        register(HomeSkill())                // Go to home
+        register(BackSkill())                // Go back
+        register(OpenAppSkill(context))      // Open app
 
-        // === 应用管理工具 (App Management) ===
-        register(ListInstalledAppsSkill(context))  // 应用列表
-        register(StartActivityTool(context))       // 启动 Activity
+        // === App management tools (App Management) ===
+        register(ListInstalledAppsSkill(context))  // List apps
+        register(StartActivityTool(context))       // Start Activity
 
-        // === 控制类工具 (Control) ===
-        register(WaitSkill())                // 等待
-        register(StopSkill(taskDataManager)) // 停止
-        register(LogSkill())                 // 日志
+        // === Control tools (Control) ===
+        register(WaitSkill())                // Wait
+        register(StopSkill(taskDataManager)) // Stop
+        register(LogSkill())                 // Log
 
-        // === 浏览器工具 (Browser) ===
-        // 注意：browser 工具使用 BrowserForClaw (Android 应用)，是平台特定的
+        // === Browser tools (Browser) ===
+        // Note: browser tool uses BrowserForClaw (Android app), platform-specific
         register(com.xiaomo.androidforclaw.agent.skills.BrowserForClawSkill(context))
 
-        // === 飞书工具 (Feishu) ===
+        // === Feishu tools (Feishu) ===
         register(FeishuSendImageSkill(context))
 
         Log.d(TAG, "✅ Registered ${tools.size} Android platform tools")
     }
 
     /**
-     * 注册记忆工具
+     * Register memory tools
      */
     private fun registerMemoryTools() {
         if (memoryManager == null) {
@@ -84,7 +84,7 @@ class AndroidToolRegistry(
             return
         }
 
-        // === 记忆工具 (Memory) ===
+        // === Memory tools (Memory) ===
         register(MemoryGetSkill(memoryManager, workspacePath))
         register(MemorySearchSkill(memoryManager, workspacePath))
 
@@ -92,7 +92,7 @@ class AndroidToolRegistry(
     }
 
     /**
-     * 注册一个工具
+     * Register a tool
      */
     private fun register(tool: Skill) {
         tools[tool.name] = tool
@@ -100,12 +100,12 @@ class AndroidToolRegistry(
     }
 
     /**
-     * 检查是否包含指定工具
+     * Check if the specified tool exists
      */
     fun contains(name: String): Boolean = tools.containsKey(name)
 
     /**
-     * 执行工具
+     * Execute tool
      */
     suspend fun execute(name: String, args: Map<String, Any?>): SkillResult {
         val tool = tools[name]
@@ -124,23 +124,23 @@ class AndroidToolRegistry(
     }
 
     /**
-     * 获取所有 Tool Definitions（用于 LLM function calling）
+     * Get all Tool Definitions (for LLM function calling)
      */
     fun getToolDefinitions(): List<ToolDefinition> {
         return tools.values.map { it.getToolDefinition() }
     }
 
     /**
-     * 获取所有工具的描述（用于构建 system prompt）
+     * Get all tools description (for building system prompt)
      */
     fun getToolsDescription(): String {
         return buildString {
             appendLine("## Android Platform Tools")
             appendLine()
-            appendLine("Android 设备专属能力，通过 AccessibilityService 和系统 API 提供：")
+            appendLine("Android 设备专属能力,通过 AccessibilityService 和系统 API 提供：")
             appendLine()
 
-            // 按类别组织
+            // Organize by category
             val categories = mapOf(
                 "观察" to listOf("screenshot", "get_view_tree"),
                 "交互" to listOf("tap", "swipe", "type", "long_press"),
@@ -163,7 +163,7 @@ class AndroidToolRegistry(
     }
 
     /**
-     * 获取工具数量
+     * Get tool count
      */
     fun getToolCount(): Int = tools.size
 }

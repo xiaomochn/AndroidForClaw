@@ -7,17 +7,17 @@ import com.xiaomo.androidforclaw.providers.ToolDefinition
 import java.io.File
 
 /**
- * Tool Registry - 管理通用底层 Tools
- * 参考 OpenClaw 的 pi-tools (来自 Pi Coding Agent)
+ * Tool Registry - Manages universal low-level Tools
+ * Inspired by OpenClaw's pi-tools (from Pi Coding Agent)
  *
- * Tools 是跨平台的通用能力：
- * - read_file, write_file, edit_file: 文件操作
- * - list_dir: 目录列表
- * - exec: 执行 shell 命令
- * - web_fetch: 网页获取
- * - javascript: JavaScript 执行
+ * Tools are cross-platform universal capabilities:
+ * - read_file, write_file, edit_file: File operations
+ * - list_dir: Directory listing
+ * - exec: Execute shell commands
+ * - web_fetch: Web fetching
+ * - javascript: JavaScript execution
  *
- * 注意：Android 特定能力在 AndroidToolRegistry 中管理
+ * Note: Android-specific capabilities are managed in AndroidToolRegistry
  */
 class ToolRegistry(
     private val context: Context,
@@ -34,38 +34,38 @@ class ToolRegistry(
     }
 
     /**
-     * 注册通用 tools（跨平台能力）
+     * Register universal tools (cross-platform capabilities)
      */
     private fun registerDefaultTools() {
-        // 使用外部存储的工作空间 (对齐 OpenClaw ~/.openclaw/workspace/)
+        // Use external storage workspace (aligned with OpenClaw ~/.openclaw/workspace/)
         val workspace = File("/sdcard/.androidforclaw/workspace")
         workspace.mkdirs()
 
-        // === 文件系统工具 (来自 Pi Coding Agent) ===
+        // === File system tools (from Pi Coding Agent) ===
         register(ReadFileTool(workspace = workspace))
         register(WriteFileTool(workspace = workspace))
         register(EditFileTool(workspace = workspace))
         register(ListDirTool(workspace = workspace))
 
-        // === 记忆工具 (Memory Recall) ===
+        // === Memory tools (Memory Recall) ===
         // TODO: Fix Memory tools compilation errors
         // register(MemorySearchTool(workspace = workspace))
         // register(MemoryGetTool(workspace = workspace))
 
-        // === Shell 工具 ===
+        // === Shell tools ===
         register(ExecTool(workingDir = workspace.absolutePath))
 
-        // === 网络工具 ===
+        // === Network tools ===
         register(WebFetchTool())
 
-        // === JavaScript 执行工具 ===
+        // === JavaScript execution tools ===
         register(JavaScriptTool(context))
 
         Log.d(TAG, "✅ Registered ${tools.size} universal tools (incl. memory_search, memory_get)")
     }
 
     /**
-     * 注册一个 tool
+     * Register a tool
      */
     fun register(tool: Tool) {
         tools[tool.name] = tool
@@ -73,12 +73,12 @@ class ToolRegistry(
     }
 
     /**
-     * 检查是否包含指定 tool
+     * Check if the specified tool exists
      */
     fun contains(name: String): Boolean = tools.containsKey(name)
 
     /**
-     * 执行 tool
+     * Execute tool
      */
     suspend fun execute(name: String, args: Map<String, Any?>): ToolResult {
         val tool = tools[name]
@@ -97,14 +97,14 @@ class ToolRegistry(
     }
 
     /**
-     * 获取所有 Tool Definitions（用于 LLM function calling）
+     * Get all Tool Definitions (for LLM function calling)
      */
     fun getToolDefinitions(): List<ToolDefinition> {
         return tools.values.map { it.getToolDefinition() }
     }
 
     /**
-     * 获取所有 tools 的描述（用于构建 system prompt）
+     * Get all tools description (for building system prompt)
      */
     fun getToolsDescription(): String {
         return buildString {
@@ -121,7 +121,7 @@ class ToolRegistry(
     }
 
     /**
-     * 获取 tool 数量
+     * Get tool count
      */
     fun getToolCount(): Int = tools.size
 }

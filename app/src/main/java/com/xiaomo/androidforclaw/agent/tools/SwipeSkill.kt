@@ -9,7 +9,7 @@ import com.xiaomo.androidforclaw.providers.ToolDefinition
 
 /**
  * Swipe Skill
- * 在屏幕上滑动
+ * Swipe on screen
  */
 class SwipeSkill : Skill {
     companion object {
@@ -67,7 +67,7 @@ class SwipeSkill : Skill {
                 return SkillResult.error("Swipe operation failed")
             }
 
-            // 等待滑动完成 + UI 稳定（滑动动画 + 惯性滚动）
+            // Wait for swipe completion + UI stabilization (swipe animation + inertial scrolling)
             val waitTime = duration + 300
             kotlinx.coroutines.delay(waitTime)
 

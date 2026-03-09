@@ -9,7 +9,7 @@ import com.xiaomo.androidforclaw.providers.ToolDefinition
 
 /**
  * Tap Skill
- * 点击屏幕指定坐标
+ * Tap at specified screen coordinates
  */
 class TapSkill : Skill {
     companion object {
@@ -65,7 +65,7 @@ class TapSkill : Skill {
                 return SkillResult.error("Tap operation failed")
             }
 
-            // 等待 UI 响应（动画、页面跳转等）
+            // Wait for UI response (animation, page transitions, etc.)
             kotlinx.coroutines.delay(200)
 
             SkillResult.success(

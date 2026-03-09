@@ -3,35 +3,35 @@ package com.xiaomo.androidforclaw.agent.tools
 import com.xiaomo.androidforclaw.providers.ToolDefinition
 
 /**
- * Skill 接口
- * 参考 nanobot 的 Skill 设计
+ * Skill interface
+ * Inspired by nanobot's Skill design
  */
 interface Skill {
     /**
-     * Skill 名称（对应 function name）
+     * Skill name (corresponds to function name)
      */
     val name: String
 
     /**
-     * Skill 描述
+     * Skill description
      */
     val description: String
 
     /**
-     * 获取 Tool Definition（用于 LLM function calling）
+     * Get Tool Definition (for LLM function calling)
      */
     fun getToolDefinition(): ToolDefinition
 
     /**
-     * 执行 skill
-     * @param args 参数 Map
-     * @return SkillResult 执行结果
+     * Execute skill
+     * @param args Parameter map
+     * @return SkillResult Execution result
      */
     suspend fun execute(args: Map<String, Any?>): SkillResult
 }
 
 /**
- * Skill 执行结果
+ * Skill execution result
  */
 data class SkillResult(
     val success: Boolean,

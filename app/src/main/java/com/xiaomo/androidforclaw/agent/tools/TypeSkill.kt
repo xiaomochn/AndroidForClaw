@@ -10,7 +10,7 @@ import com.xiaomo.androidforclaw.providers.ToolDefinition
 
 /**
  * Type Skill
- * 在当前焦点输入框中输入文本
+ * Type text into the currently focused input field
  */
 class TypeSkill(private val context: Context) : Skill {
     companion object {
@@ -52,11 +52,11 @@ class TypeSkill(private val context: Context) : Skill {
 
         Log.d(TAG, "Typing text: $text")
         return try {
-            // 输入文本
+            // Type text
             DeviceController.inputText(text, context)
 
-            // 等待输入完成 + 输入法响应（根据文本长度动态调整）
-            val waitTime = 100L + (text.length * 5L).coerceAtMost(300L) // 最少 100ms，最多 400ms
+            // Wait for input completion + IME response (dynamically adjusted by text length)
+            val waitTime = 100L + (text.length * 5L).coerceAtMost(300L) // Min 100ms, max 400ms
             kotlinx.coroutines.delay(waitTime)
 
             SkillResult.success(
