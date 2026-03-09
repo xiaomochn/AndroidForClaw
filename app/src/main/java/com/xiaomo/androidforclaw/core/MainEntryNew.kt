@@ -31,18 +31,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * 新的 MainEntry - 基于 Nanobot 架构的重构版本
+ * New MainEntry - Refactored version based on Nanobot architecture
  *
- * 核心改变：
- * 1. 使用 AgentLoop 替代固定流程
- * 2. 使用 LLM Provider (Claude Opus 4.6 + Reasoning)
- * 3. 工具化所有操作
- * 4. 动态决策替代硬编码流程
+ * Core changes:
+ * 1. Use AgentLoop instead of fixed process
+ * 2. Use LLM Provider (Claude Opus 4.6 + Reasoning)
+ * 3. Toolize all operations
+ * 4. Dynamic decision-making instead of hardcoded flow
  */
 object MainEntryNew {
     private const val TAG = "MainEntryNew"
 
-    // ================ 核心组件 ================
+    // ================ Core Components ================
     private lateinit var application: Application
     private lateinit var toolRegistry: ToolRegistry
     private lateinit var androidToolRegistry: AndroidToolRegistry
@@ -50,7 +50,7 @@ object MainEntryNew {
     private lateinit var contextBuilder: ContextBuilder
     private lateinit var sessionManager: SessionManager
 
-    // ================ 状态管理 ================
+    // ================ State Management ================
     var user: String = ""
     private var currentTaskId: String? = null
     private var currentDocId: String? = null
@@ -58,23 +58,23 @@ object MainEntryNew {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val taskDataManager: TaskDataManager = TaskDataManager.getInstance()
 
-    // 文档同步完成状态
+    // Document sync completion state
     private val _docSyncFinished = MutableStateFlow(false)
     val docSyncFinished = _docSyncFinished.asStateFlow()
 
-    // 测试总结完成状态
+    // Test summary completion state
     private val _summaryFinished = MutableStateFlow(false)
     val summaryFinished = _summaryFinished.asStateFlow()
 
     /**
-     * 获取 SessionManager (供 Gateway 使用)
+     * Get SessionManager (for Gateway use)
      */
     fun getSessionManager(): SessionManager? {
         return if (::sessionManager.isInitialized) sessionManager else null
     }
 
     /**
-     * 初始化 - 必须在使用前调用
+     * Initialize - Must be called before use
      */
     fun initialize(app: Application) {
         if (::application.isInitialized) {
@@ -86,22 +86,22 @@ object MainEntryNew {
         Log.d(TAG, "Initializing MainEntryNew...")
 
         try {
-            // 1. 初始化 LLM Provider (统一 Provider - 支持所有 OpenClaw 兼容 API)
+            // 1. Initialize LLM Provider (unified Provider - supports all OpenClaw-compatible APIs)
             val llmProvider = com.xiaomo.androidforclaw.providers.UnifiedLLMProvider(application)
-            Log.d(TAG, "✓ UnifiedLLMProvider initialized (支持多模型 API)")
+            Log.d(TAG, "✓ UnifiedLLMProvider initialized (supports multi-model APIs)")
 
-            // 2. 初始化 ToolRegistry (通用工具 - 来自 Pi Coding Agent)
+            // 2. Initialize ToolRegistry (universal tools - from Pi Coding Agent)
             toolRegistry = ToolRegistry(
                 context = application,
                 taskDataManager = taskDataManager
             )
             Log.d(TAG, "✓ ToolRegistry initialized (${toolRegistry.getToolCount()} universal tools)")
 
-            // 3. 初始化 MemoryManager (记忆管理)
+            // 3. Initialize MemoryManager (memory management)
             val workspacePath = "/sdcard/.androidforclaw/workspace"
             val memoryManager = com.xiaomo.androidforclaw.agent.memory.MemoryManager(workspacePath)
 
-            // 4. 初始化 AndroidToolRegistry (Android 平台工具)
+            // 4. Initialize AndroidToolRegistry (Android platform tools)
             androidToolRegistry = AndroidToolRegistry(
                 context = application,
                 taskDataManager = taskDataManager,
@@ -110,7 +110,7 @@ object MainEntryNew {
             )
             Log.d(TAG, "✓ AndroidToolRegistry initialized (${androidToolRegistry.getToolCount()} Android tools)")
 
-            // 5. 初始化上下文构建器 (OpenClaw 风格)
+            // 5. Initialize context builder (OpenClaw style)
             contextBuilder = ContextBuilder(
                 context = application,
                 toolRegistry = toolRegistry,
@@ -118,24 +118,24 @@ object MainEntryNew {
             )
             Log.d(TAG, "✓ ContextBuilder initialized")
 
-            // 5. 初始化会话管理器
+            // 5. Initialize session manager
             sessionManager = SessionManager(
                 workspace = application.filesDir
             )
             Log.d(TAG, "✓ SessionManager initialized")
 
-            // 6. 初始化上下文管理器 (OpenClaw 对齐的上下文超限处理)
+            // 6. Initialize context manager (OpenClaw-aligned context overflow handling)
             val contextManager = com.xiaomo.androidforclaw.agent.context.ContextManager(llmProvider)
             Log.d(TAG, "✓ ContextManager initialized")
 
-            // 7. 初始化 AgentLoop
+            // 7. Initialize AgentLoop
             agentLoop = AgentLoop(
                 llmProvider = llmProvider,
                 toolRegistry = toolRegistry,
                 androidToolRegistry = androidToolRegistry,
                 contextManager = contextManager,
                 maxIterations = 40,
-                modelRef = null  // 使用默认模型
+                modelRef = null  // Use default model
             )
             Log.d(TAG, "✓ AgentLoop initialized")
 
@@ -147,20 +147,20 @@ object MainEntryNew {
         }
     }
 
-    // registerAllTools() 已移除
-    // 工具现在分为:
-    // - ToolRegistry: 通用工具 (read, write, exec, web_fetch)
-    // - AndroidToolRegistry: Android 平台工具 (tap, screenshot, open_app)
+    // registerAllTools() removed
+    // Tools are now divided into:
+    // - ToolRegistry: Universal tools (read, write, exec, web_fetch)
+    // - AndroidToolRegistry: Android platform tools (tap, screenshot, open_app)
 
     /**
-     * 使用会话管理运行 Agent - 支持多轮对话
+     * Run Agent with session management - Supports multi-turn conversations
      */
     fun runWithSession(
         userInput: String,
         sessionId: String?,
         application: Application
     ) {
-        // 确保已初始化
+        // Ensure initialized
         if (!::agentLoop.isInitialized) {
             initialize(application)
         }
@@ -168,88 +168,88 @@ object MainEntryNew {
         val effectiveSessionId = sessionId ?: "default"
         Log.d(TAG, "🆔 [Session] Session ID: $effectiveSessionId")
 
-        // 获取或创建会话
+        // Get or create session
         val session = sessionManager.getOrCreate(effectiveSessionId)
-        Log.d(TAG, "📋 [Session] 历史消息数: ${session.messageCount()}")
+        Log.d(TAG, "📋 [Session] History message count: ${session.messageCount()}")
 
-        // 获取历史消息（最近 20 条）并转换为新格式
+        // Get history messages (recent 20) and convert to new format
         val contextHistory = session.getRecentMessages(20).map { it.toNewMessage() }
-        Log.d(TAG, "📥 [Session] 加载上下文: ${contextHistory.size} 条消息")
+        Log.d(TAG, "📥 [Session] Loaded context: ${contextHistory.size} messages")
 
         if (TextUtils.isEmpty(user)) {
             user = Build.MODEL
         }
 
-        // 启动协程执行 (不显示悬浮窗)
+        // Start coroutine execution (without showing floating window)
         job = scope.simpleSafeLaunch(
             {
-                Log.d(TAG, "========== Agent 会话执行开始 ==========")
+                Log.d(TAG, "========== Agent Session Execution Start ==========")
                 Log.d(TAG, "🆔 Session ID: $effectiveSessionId")
                 Log.d(TAG, "💬 User input: $userInput")
                 Log.d(TAG, "📋 Context messages: ${contextHistory.size}")
 
-                // 1. 构建系统提示词
-                Log.d(TAG, "💬 构建系统提示词...")
+                // 1. Build system prompt
+                Log.d(TAG, "💬 Building system prompt...")
                 val systemPrompt = contextBuilder.buildSystemPrompt(
                     userGoal = userInput,
                     packageName = "",
                     testMode = "chat"
                 )
-                Log.d(TAG, "✅ System prompt 构建完成 (${systemPrompt.length} chars)")
+                Log.d(TAG, "✅ System prompt built (${systemPrompt.length} chars)")
 
-                // 2. 广播用户消息
-                Log.d(TAG, "📤 [Broadcast] 广播用户消息...")
+                // 2. Broadcast user message
+                Log.d(TAG, "📤 [Broadcast] Broadcasting user message...")
                 com.xiaomo.androidforclaw.gateway.GatewayServer.broadcastChatMessage(
                     effectiveSessionId, "user", userInput
                 )
 
-                // 3. 启动进度监听
+                // 3. Start progress listening
                 val progressJob = launch {
                     agentLoop.progressFlow.collect { update ->
                         handleProgressUpdate(update)
                     }
                 }
 
-                // 4. 运行 AgentLoop (传入上下文历史)
+                // 4. Run AgentLoop (with context history)
                 val result = agentLoop.run(
                     systemPrompt = systemPrompt,
                     userMessage = userInput,
                     contextHistory = contextHistory,
-                    reasoningEnabled = true  // 默认启用 reasoning
+                    reasoningEnabled = true  // Reasoning enabled by default
                 )
 
-                Log.d(TAG, "========== AgentLoop 完成 ==========")
-                Log.d(TAG, "迭代次数: ${result.iterations}")
-                Log.d(TAG, "最终结果: ${result.finalContent}")
+                Log.d(TAG, "========== AgentLoop Complete ==========")
+                Log.d(TAG, "Iterations: ${result.iterations}")
+                Log.d(TAG, "Final result: ${result.finalContent}")
 
-                // 5. 广播 AI 响应
+                // 5. Broadcast AI response
                 if (result.finalContent.isNotEmpty()) {
-                    Log.d(TAG, "📤 [Broadcast] 广播 AI 响应...")
+                    Log.d(TAG, "📤 [Broadcast] Broadcasting AI response...")
                     com.xiaomo.androidforclaw.gateway.GatewayServer.broadcastChatMessage(
                         effectiveSessionId, "assistant", result.finalContent
                     )
                 }
 
-                // 6. 保存消息到会话（转换回旧格式）
-                Log.d(TAG, "💾 [Session] 保存消息到会话...")
+                // 6. Save messages to session (convert back to legacy format)
+                Log.d(TAG, "💾 [Session] Saving messages to session...")
                 result.messages.forEach { message ->
                     session.addMessage(message.toLegacyMessage())
                 }
                 sessionManager.save(session)
-                Log.d(TAG, "✅ [Session] 会话已保存，总消息数: ${session.messageCount()}")
+                Log.d(TAG, "✅ [Session] Session saved, total messages: ${session.messageCount()}")
 
-                // 取消进度监听
+                // Cancel progress listening
                 progressJob.cancel()
 
             },
             {
-                Log.e(TAG, "❌ Agent 会话执行失败", it)
+                Log.e(TAG, "❌ Agent session execution failed", it)
             }
         )
     }
 
     /**
-     * 运行测试任务 - 新架构版本
+     * Run test task - New architecture version
      */
     fun run(
         userInput: String,
@@ -279,32 +279,32 @@ object MainEntryNew {
         currentTaskId = newTaskId
         Log.d(TAG, "========== 新测试任务: $newTaskId ==========")
 
-        // 设置用户选择的模式
+        // Set user-selected mode
         val isExplorationMode = mmkv.decodeBool(MMKVKeys.EXPLORATION_MODE.key, false)
         val testMode = if (isExplorationMode) "exploration" else "planning"
-        // TODO: updateIsExplorationMode 已删除（旧架构），新架构不需要在 TaskData 中存储此状态
+        // TODO: updateIsExplorationMode removed (old architecture), new architecture doesn't need to store this state in TaskData
         // taskDataManager.getCurrentTaskData()?.updateIsExplorationMode(isExplorationMode)
         Log.d(TAG, "测试模式: $testMode")
 
-        // 取消旧任务
+        // Cancel old task
         cancelCurrentJobWithoutClearingTaskData()
 
-        // 设置新任务为运行状态
+        // Set new task as running
         val newTaskData = taskDataManager.getCurrentTaskData()
         newTaskData?.setIsRunning(true)
 
-        // 获取屏幕唤醒锁
+        // Acquire screen wake lock
         WakeLockManager.acquireScreenWakeLock()
         Log.d(TAG, "已获取屏幕唤醒锁")
 
-        // 启动协程执行测试
-        Log.d(TAG, "🚀 即将启动协程执行测试任务...")
+        // Start coroutine to execute test
+        Log.d(TAG, "🚀 About to start coroutine for test task...")
         job = scope.simpleSafeLaunch(
             {
-                Log.d(TAG, "✅ 协程已启动，开始执行测试任务...")
+                Log.d(TAG, "✅ Coroutine started, executing test task...")
 
-                // 1. 构建系统提示词
-                Log.d(TAG, "💬 步骤1: 构建系统提示词...")
+                // 1. Build system prompt
+                Log.d(TAG, "💬 Step 1: Building system prompt...")
                 val packageName = existingPackageName ?: ""
                 val systemPrompt = contextBuilder.buildSystemPrompt(
                     userGoal = userInput,
@@ -312,31 +312,31 @@ object MainEntryNew {
                     testMode = testMode
                 )
 
-                Log.d(TAG, "✅ System prompt 构建完成 (${systemPrompt.length} chars)")
-                Log.d(TAG, "✅ 预估 Tokens: ~${systemPrompt.length / 4}")
+                Log.d(TAG, "✅ System prompt built (${systemPrompt.length} chars)")
+                Log.d(TAG, "✅ Estimated Tokens: ~${systemPrompt.length / 4}")
 
-                // 打印 Skills 统计信息
+                // Print Skills statistics
                 val skillsStats = contextBuilder.getSkillsStatistics()
                 if (skillsStats.isNotEmpty()) {
-                    Log.d(TAG, "📊 Skills 统计:")
+                    Log.d(TAG, "📊 Skills statistics:")
                     skillsStats.lines().forEach { line ->
                         Log.d(TAG, "   $line")
                     }
                 }
 
-                // 2. 监听 AgentLoop 进度（在启动前监听）
-                Log.d(TAG, "👂 步骤2: 启动进度监听...")
+                // 2. Listen to AgentLoop progress (listen before start)
+                Log.d(TAG, "👂 Step 2: Starting progress listening...")
                 val progressJob = launch {
-                    Log.d(TAG, "✅ 进度监听协程已启动")
+                    Log.d(TAG, "✅ Progress listening coroutine started")
                     agentLoop.progressFlow.collect { update ->
-                        Log.d(TAG, "📥 收到进度更新: ${update.javaClass.simpleName}")
+                        Log.d(TAG, "📥 Received progress update: ${update.javaClass.simpleName}")
                         handleProgressUpdate(update)
                     }
                 }
-                Log.d(TAG, "✅ 进度监听已设置")
+                Log.d(TAG, "✅ Progress listening set up")
 
-                // 3. 运行 AgentLoop
-                Log.d(TAG, "========== 启动 AgentLoop ==========")
+                // 3. Run AgentLoop
+                Log.d(TAG, "========== Starting AgentLoop ==========")
                 Log.d(TAG, "System prompt length: ${systemPrompt.length}")
                 Log.d(TAG, "User input: $userInput")
                 Log.d(TAG, "Universal tools: ${toolRegistry.getToolCount()}")
@@ -348,12 +348,12 @@ object MainEntryNew {
                     reasoningEnabled = true
                 )
 
-                Log.d(TAG, "========== AgentLoop 完成 ==========")
-                Log.d(TAG, "迭代次数: ${result.iterations}")
-                Log.d(TAG, "使用工具: ${result.toolsUsed.joinToString(", ")}")
-                Log.d(TAG, "最终结果: ${result.finalContent}")
+                Log.d(TAG, "========== AgentLoop Complete ==========")
+                Log.d(TAG, "Iterations: ${result.iterations}")
+                Log.d(TAG, "Tools used: ${result.toolsUsed.joinToString(", ")}")
+                Log.d(TAG, "Final result: ${result.finalContent}")
 
-                // 4. 释放资源
+                // 4. Release resources
                 WakeLockManager.releaseScreenWakeLock()
                 _summaryFinished.value = true
                 onSummaryFinished?.invoke()
@@ -365,7 +365,7 @@ object MainEntryNew {
                 Log.e(TAG, "测试任务执行失败", error)
                 LayoutExceptionLogger.log("MainEntryNew#run", error)
 
-                // 释放资源
+                // Release resources
                 WakeLockManager.releaseScreenWakeLock()
 
                 _summaryFinished.value = true
@@ -374,7 +374,7 @@ object MainEntryNew {
     }
 
     /**
-     * 处理进度更新 - 仅更新悬浮窗显示
+     * Handle progress update - Only update floating window display
      */
     private suspend fun handleProgressUpdate(update: ProgressUpdate) {
         Log.d(TAG, "handleProgressUpdate called: ${update.javaClass.simpleName}")
@@ -473,7 +473,7 @@ object MainEntryNew {
 
 
     /**
-     * 取消当前任务
+     * Cancel current task
      */
     fun cancelCurrentJob(isRunning: Boolean) {
         Log.d(TAG, "cancelCurrentJob")
@@ -489,14 +489,14 @@ object MainEntryNew {
 
         _summaryFinished.value = true
 
-        // 停止 AgentLoop
+        // Stop AgentLoop
         if (::agentLoop.isInitialized) {
             agentLoop.stop()
         }
     }
 
     /**
-     * 取消当前任务但不清理 TaskData
+     * Cancel current task without clearing TaskData
      */
     private fun cancelCurrentJobWithoutClearingTaskData() {
         Log.d(TAG, "cancelCurrentJobWithoutClearingTaskData")

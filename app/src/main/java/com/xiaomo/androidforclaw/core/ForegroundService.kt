@@ -15,13 +15,13 @@ import com.draco.ladb.R
 // import com.xiaomo.androidforclaw.ui.activity.QuickJSTestActivity
 
 /**
- * 前台服务 - 用于保活进程
+ * Foreground Service - For process keep-alive
  *
- * 保活机制：
- * 1. 前台服务通知（降低被杀风险）
- * 2. START_STICKY 重启策略
- * 3. 通知点击跳转到应用
- * 4. onDestroy 自动重启
+ * Keep-alive mechanisms:
+ * 1. Foreground service notification (reduces kill risk)
+ * 2. START_STICKY restart policy
+ * 3. Notification tap redirects to app
+ * 4. Auto-restart on onDestroy
  */
 class ForegroundService : Service() {
     companion object {
@@ -39,7 +39,7 @@ class ForegroundService : Service() {
         Log.i(TAG, "ForegroundService onCreate")
         createNotificationChannel()
 
-        // Android 14+ 需要显式指定 foregroundServiceType
+        // Android 14+ requires explicit foregroundServiceType specification
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 NOTIFICATION_ID,
@@ -52,9 +52,9 @@ class ForegroundService : Service() {
     }
 
     /**
-     * 当 Service 被启动时调用
+     * Called when Service is started
      *
-     * 返回 START_STICKY：服务被杀后，系统会尝试重新创建服务
+     * Returns START_STICKY: After service is killed, system will try to recreate it
      */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.i(TAG, "ForegroundService onStartCommand")
@@ -79,20 +79,20 @@ class ForegroundService : Service() {
             }
         }
 
-        // START_STICKY: 服务被杀后系统会重启，intent 可能为 null
+        // START_STICKY: Service will be restarted after being killed, intent may be null
         return START_STICKY
     }
 
     /**
-     * 如果该 Service 不提供绑定，则返回 null。
+     * Returns null if this Service doesn't provide binding.
      */
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.w(TAG, "ForegroundService onDestroy - 服务被销毁")
+        Log.w(TAG, "ForegroundService onDestroy - Service destroyed")
 
-        // 保活机制：服务被销毁时尝试重启
+        // Keep-alive mechanism: Try to restart service when destroyed
         try {
             val restartIntent = Intent(applicationContext, ForegroundService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -107,7 +107,7 @@ class ForegroundService : Service() {
     }
 
     /**
-     * 创建通知渠道（Android 8.0+ 必需）
+     * Create notification channel (required for Android 8.0+)
      */
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -129,10 +129,10 @@ class ForegroundService : Service() {
     }
 
     /**
-     * 创建前台服务通知
+     * Create foreground service notification
      */
     private fun createNotification(): Notification {
-        // 创建点击通知的 PendingIntent（跳转到应用）
+        // Create PendingIntent for notification tap (jump to app)
         val notificationIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         } ?: Intent()
@@ -156,9 +156,9 @@ class ForegroundService : Service() {
             .setSmallIcon(R.drawable.ic_baseline_adb_24)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setShowWhen(true)
-            .setOngoing(true) // 设置为持续通知，用户无法滑动删除
+            .setOngoing(true) // Set as ongoing notification, user cannot swipe to dismiss
             .setContentIntent(pendingIntent)
-            .setAutoCancel(false) // 点击后不自动取消
+            .setAutoCancel(false) // Don't auto-cancel after tap
             .build()
     }
 }

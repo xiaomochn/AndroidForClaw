@@ -6,16 +6,16 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * 消息队列管理器
+ * Message Queue Manager
  *
- * 完全对齐 OpenClaw 的队列机制：
- * - interrupt: 新消息立即中断当前运行，清空队列
- * - steer: 新消息传递给正在运行的 Agent
- * - followup: 新消息加入队列，按顺序处理
- * - collect: 收集多条消息，一次性处理
- * - queue: 简单队列，FIFO
+ * Fully aligned with OpenClaw queue mechanisms:
+ * - interrupt: New message immediately interrupts current run, clears queue
+ * - steer: New message is passed to the running Agent
+ * - followup: New message is added to queue, processed in order
+ * - collect: Collect multiple messages, process in batch
+ * - queue: Simple FIFO queue
  *
- * 参考:
+ * Reference:
  * - openclaw/src/auto-reply/reply/get-reply-run.ts
  * - openclaw/src/auto-reply/reply/queue/types.ts
  * - openclaw/src/utils/queue-helpers.ts
@@ -27,27 +27,27 @@ class MessageQueueManager {
     }
 
     /**
-     * 队列模式（对齐 OpenClaw）
+     * Queue mode (aligned with OpenClaw)
      */
     enum class QueueMode {
-        INTERRUPT,   // 中断当前运行
-        STEER,       // 引导当前运行
-        FOLLOWUP,    // 跟进队列
-        COLLECT,     // 收集模式
-        QUEUE        // 简单队列
+        INTERRUPT,   // Interrupt current run
+        STEER,       // Steer current run
+        FOLLOWUP,    // Followup queue
+        COLLECT,     // Collect mode
+        QUEUE        // Simple queue
     }
 
     /**
-     * Drop 策略（对齐 OpenClaw）
+     * Drop policy (aligned with OpenClaw)
      */
     enum class DropPolicy {
-        OLD,         // 丢弃最旧的消息
-        NEW,         // 拒绝新消息
-        SUMMARIZE    // 丢弃但保留摘要
+        OLD,         // Drop oldest message
+        NEW,         // Reject new message
+        SUMMARIZE    // Drop but keep summary
     }
 
     /**
-     * 消息队列状态
+     * Message queue state
      */
     private data class QueueState(
         val key: String,
@@ -62,7 +62,7 @@ class MessageQueueManager {
     )
 
     /**
-     * 队列中的消息
+     * Queued message
      */
     data class QueuedMessage(
         val messageId: String,
@@ -74,19 +74,19 @@ class MessageQueueManager {
         val metadata: Map<String, Any?> = emptyMap()
     )
 
-    // 每个队列 key 的状态
+    // State for each queue key
     private val queues = ConcurrentHashMap<String, QueueState>()
 
-    // 基础队列（用于 followup 和 queue 模式）
+    // Base queue (for followup and queue modes)
     private val baseQueue = KeyedAsyncQueue()
 
     /**
-     * 入队消息
+     * Enqueue message
      *
-     * @param key 队列键（通常是 chatId）
-     * @param message 消息
-     * @param mode 队列模式
-     * @param processor 消息处理器
+     * @param key Queue key (usually chatId)
+     * @param message Message
+     * @param mode Queue mode
+     * @param processor Message processor
      */
     suspend fun enqueue(
         key: String,
@@ -104,9 +104,9 @@ class MessageQueueManager {
     }
 
     /**
-     * INTERRUPT 模式：立即中断当前运行，清空队列
+     * INTERRUPT mode: Immediately interrupt current run, clear queue
      *
-     * 对齐 OpenClaw 逻辑：
+     * Aligned with OpenClaw logic:
      * ```typescript
      * if (resolvedQueue.mode === "interrupt" && laneSize > 0) {
      *   const cleared = clearCommandLane(sessionLaneKey);
@@ -123,20 +123,20 @@ class MessageQueueManager {
             QueueState(key = key, mode = QueueMode.INTERRUPT)
         }
 
-        // 1. 取消当前正在运行的任务
+        // 1. Cancel currently running task
         if (state.isProcessing.get()) {
             Log.d(TAG, "🛑 [INTERRUPT] Aborting current run for $key")
             state.currentJob?.cancel()
         }
 
-        // 2. 清空队列
+        // 2. Clear queue
         val cleared = state.messages.size
         if (cleared > 0) {
             Log.d(TAG, "🗑️  [INTERRUPT] Clearing $cleared queued messages for $key")
             state.messages.clear()
         }
 
-        // 3. 立即处理新消息
+        // 3. Process new message immediately
         Log.d(TAG, "⚡ [INTERRUPT] Processing new message immediately for $key")
         state.isProcessing.set(true)
         try {
@@ -147,11 +147,11 @@ class MessageQueueManager {
     }
 
     /**
-     * STEER 模式：新消息传递给正在运行的 Agent
+     * STEER mode: Pass new message to running Agent
      *
-     * 对齐 OpenClaw 逻辑：
-     * - 如果 Agent 正在运行，将新消息注入到 Agent 的消息流
-     * - 如果 Agent 未运行，正常处理
+     * Aligned with OpenClaw logic:
+     * - If Agent is running, inject new message into Agent's message stream
+     * - If Agent is not running, process normally
      */
     private suspend fun handleSteer(
         key: String,
@@ -163,13 +163,13 @@ class MessageQueueManager {
         }
 
         if (state.isProcessing.get()) {
-            // Agent 正在运行，将消息添加到 steer 队列
+            // Agent is running, add message to steer queue
             Log.d(TAG, "🎯 [STEER] Injecting message into running Agent for $key")
             state.messages.add(message)
-            // TODO: 通知 AgentLoop 有新消息（需要 AgentLoop 支持）
+            // TODO: Notify AgentLoop of new message (requires AgentLoop support)
             notifyAgentLoop(key, message)
         } else {
-            // Agent 未运行，正常处理
+            // Agent not running, process normally
             Log.d(TAG, "▶️  [STEER] Agent not running, processing normally for $key")
             baseQueue.enqueue(key) {
                 state.isProcessing.set(true)
@@ -183,9 +183,9 @@ class MessageQueueManager {
     }
 
     /**
-     * FOLLOWUP 模式：加入队列，按顺序处理
+     * FOLLOWUP mode: Add to queue, process in order
      *
-     * 这是当前已实现的基本行为
+     * This is the currently implemented basic behavior
      */
     private suspend fun handleFollowup(
         key: String,
@@ -209,11 +209,11 @@ class MessageQueueManager {
     }
 
     /**
-     * COLLECT 模式：收集多条消息，一次性处理
+     * COLLECT mode: Collect multiple messages, process in batch
      *
-     * 对齐 OpenClaw 逻辑：
-     * - 消息加入队列
-     * - 当前消息处理完成后，一次性处理所有排队消息
+     * Aligned with OpenClaw logic:
+     * - Messages are added to queue
+     * - After current message processing completes, all queued messages are processed in batch
      */
     private suspend fun handleCollect(
         key: String,
@@ -224,7 +224,7 @@ class MessageQueueManager {
             QueueState(key = key, mode = QueueMode.COLLECT)
         }
 
-        // 应用 drop policy
+        // Apply drop policy
         if (!applyDropPolicy(state, message)) {
             Log.w(TAG, "🚫 [COLLECT] Message dropped due to drop policy for $key")
             return
@@ -233,7 +233,7 @@ class MessageQueueManager {
         state.messages.add(message)
         Log.d(TAG, "📦 [COLLECT] Collected message for $key (${state.messages.size} total)")
 
-        // 如果没有正在处理，触发批量处理
+        // If not currently processing, trigger batch processing
         if (!state.isProcessing.get()) {
             baseQueue.enqueue(key) {
                 state.isProcessing.set(true)
@@ -247,19 +247,19 @@ class MessageQueueManager {
     }
 
     /**
-     * QUEUE 模式：简单 FIFO 队列
+     * QUEUE mode: Simple FIFO queue
      */
     private suspend fun handleQueue(
         key: String,
         message: QueuedMessage,
         processor: suspend (QueuedMessage) -> Unit
     ) {
-        // 与 FOLLOWUP 相同，简单排队
+        // Same as FOLLOWUP, simple queuing
         handleFollowup(key, message, processor)
     }
 
     /**
-     * 应用 drop policy
+     * Apply drop policy
      */
     private fun applyDropPolicy(state: QueueState, newMessage: QueuedMessage): Boolean {
         if (state.cap <= 0 || state.messages.size < state.cap) {
@@ -268,24 +268,24 @@ class MessageQueueManager {
 
         return when (state.dropPolicy) {
             DropPolicy.NEW -> {
-                // 拒绝新消息
+                // Reject new message
                 Log.w(TAG, "🚫 Drop policy: NEW - rejecting new message")
                 false
             }
             DropPolicy.OLD -> {
-                // 丢弃最旧的消息
+                // Drop oldest message
                 val dropped = state.messages.removeAt(0)
                 Log.d(TAG, "🗑️  Drop policy: OLD - dropped message: ${dropped.messageId}")
                 true
             }
             DropPolicy.SUMMARIZE -> {
-                // 丢弃最旧的消息，但保留摘要
+                // Drop oldest message but keep summary
                 val dropped = state.messages.removeAt(0)
                 val summary = summarizeMessage(dropped)
                 state.summaryLines.add(summary)
                 Log.d(TAG, "📝 Drop policy: SUMMARIZE - dropped and summarized: ${dropped.messageId}")
 
-                // 限制摘要数量
+                // Limit summary count
                 if (state.summaryLines.size > state.cap) {
                     state.summaryLines.removeAt(0)
                 }
@@ -295,7 +295,7 @@ class MessageQueueManager {
     }
 
     /**
-     * 汇总消息（用于 SUMMARIZE drop policy）
+     * Summarize message (for SUMMARIZE drop policy)
      */
     private fun summarizeMessage(message: QueuedMessage): String {
         val content = message.content.take(100)
@@ -303,7 +303,7 @@ class MessageQueueManager {
     }
 
     /**
-     * 批量处理消息（COLLECT 模式）
+     * Process batch of messages (COLLECT mode)
      */
     private suspend fun processBatch(
         state: QueueState,
@@ -313,21 +313,21 @@ class MessageQueueManager {
 
         Log.d(TAG, "📦 [COLLECT] Processing batch of ${state.messages.size} messages")
 
-        // 取出所有消息
+        // Extract all messages
         val batch = state.messages.toList()
         state.messages.clear()
 
-        // 构建批量消息提示词
+        // Build batch message prompt
         val batchMessage = buildBatchMessage(batch, state)
 
-        // 处理批量消息
+        // Process batch message
         processor(batchMessage)
     }
 
     /**
-     * 构建批量消息（COLLECT 模式）
+     * Build batch message (COLLECT mode)
      *
-     * 对齐 OpenClaw 的 buildCollectPrompt
+     * Aligned with OpenClaw's buildCollectPrompt
      */
     private fun buildBatchMessage(
         messages: List<QueuedMessage>,
@@ -337,7 +337,7 @@ class MessageQueueManager {
             appendLine("[Batch] Collected ${messages.size} message(s):")
             appendLine()
 
-            // 如果有被丢弃的消息摘要
+            // If there are dropped message summaries
             if (state.droppedCount > 0 && state.summaryLines.isNotEmpty()) {
                 appendLine("[Queue overflow] Dropped ${state.droppedCount} message(s) due to cap.")
                 appendLine("Summary:")
@@ -348,7 +348,7 @@ class MessageQueueManager {
                 state.summaryLines.clear()
             }
 
-            // 列出所有消息
+            // List all messages
             messages.forEachIndexed { index, msg ->
                 appendLine("Message ${index + 1}:")
                 appendLine("From: ${msg.senderId}")
@@ -357,7 +357,7 @@ class MessageQueueManager {
             }
         }
 
-        // 使用最后一条消息的元数据
+        // Use metadata from last message
         val lastMessage = messages.last()
         return QueuedMessage(
             messageId = "batch_${System.currentTimeMillis()}",
@@ -374,21 +374,21 @@ class MessageQueueManager {
     }
 
     /**
-     * 通知 AgentLoop 有新消息（STEER 模式）
+     * Notify AgentLoop of new message (STEER mode)
      *
-     * TODO: 需要 AgentLoop 支持消息注入
+     * TODO: Requires AgentLoop support for message injection
      */
     private fun notifyAgentLoop(key: String, message: QueuedMessage) {
-        // 这里需要实现与 AgentLoop 的通信机制
-        // 可能的方案：
-        // 1. 使用 SharedFlow 广播新消息
-        // 2. 在 AgentLoop 的每次迭代前检查队列
-        // 3. 使用 Channel 传递消息
+        // Need to implement communication mechanism with AgentLoop
+        // Possible approaches:
+        // 1. Use SharedFlow to broadcast new messages
+        // 2. Check queue before each AgentLoop iteration
+        // 3. Use Channel to pass messages
         Log.d(TAG, "⚠️  [STEER] notifyAgentLoop not implemented yet")
     }
 
     /**
-     * 设置队列配置
+     * Set queue configuration
      */
     fun setQueueSettings(
         key: String,
@@ -408,7 +408,7 @@ class MessageQueueManager {
     }
 
     /**
-     * 获取队列状态（用于调试）
+     * Get queue state (for debugging)
      */
     fun getQueueState(key: String): Map<String, Any> {
         val state = queues[key] ?: return mapOf(
@@ -427,7 +427,7 @@ class MessageQueueManager {
     }
 
     /**
-     * 清空指定队列
+     * Clear specific queue
      */
     fun clearQueue(key: String) {
         val state = queues[key] ?: return
@@ -437,7 +437,7 @@ class MessageQueueManager {
     }
 
     /**
-     * 清空所有队列
+     * Clear all queues
      */
     fun clearAllQueues() {
         queues.values.forEach { state ->

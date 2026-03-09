@@ -6,10 +6,10 @@ import java.io.File
 import java.util.UUID
 
 /**
- * AndroidForClaw 初始化
- * 完全对齐 OpenClaw 的目录结构和文件
+ * AndroidForClaw Initialization
+ * Fully aligned with OpenClaw directory structure and files
  *
- * OpenClaw 目录结构:
+ * OpenClaw directory structure:
  * ~/.openclaw/
  * ├── .builtin-mimo-provider
  * ├── .device-id
@@ -39,7 +39,7 @@ object AndroidForClawInit {
     private const val BASE_DIR = "/sdcard/.androidforclaw"
 
     /**
-     * 初始化所有目录和文件
+     * Initialize all directories and files
      */
     fun initialize(context: Context) {
         try {
@@ -47,51 +47,51 @@ object AndroidForClawInit {
             Log.i(TAG, "初始化 AndroidForClaw 目录结构")
             Log.i(TAG, "========================================")
 
-            // 1. 创建根目录
+            // 1. Create root directory
             val baseDir = File(BASE_DIR)
             if (!baseDir.exists()) {
                 baseDir.mkdirs()
                 Log.i(TAG, "✅ 创建根目录: $BASE_DIR")
             }
 
-            // 2. 创建 .device-id
+            // 2. Create .device-id
             initDeviceId()
 
-            // 3. 创建 agents/main/sessions/
+            // 3. Create agents/main/sessions/
             initAgentsDirectory()
 
-            // 4. 创建 canvas/
+            // 4. Create canvas/
             initCanvasDirectory()
 
-            // 5. 创建 config-backups/
+            // 5. Create config-backups/
             File(BASE_DIR, "config-backups").mkdirs()
             Log.d(TAG, "✅ 创建 config-backups/")
 
-            // 6. 创建 cron/
+            // 6. Create cron/
             initCronDirectory()
 
-            // 7. 创建 devices/
+            // 7. Create devices/
             initDevicesDirectory()
 
-            // 8. 创建 skills/
+            // 8. Create skills/
             File(BASE_DIR, "skills").mkdirs()
             Log.d(TAG, "✅ 创建 skills/")
 
-            // 9. 创建 workspace/
+            // 9. Create workspace/
             File(BASE_DIR, "workspace").apply {
                 mkdirs()
-                // workspace 子目录
+                // workspace subdirectories
                 File(this, "skills").mkdirs()
             }
             Log.d(TAG, "✅ 创建 workspace/")
 
-            // 10. 创建 update-check.json
+            // 10. Create update-check.json
             initUpdateCheck()
 
-            // 11. 创建日志文件占位符
+            // 11. Create log file placeholders
             initLogFiles()
 
-            // 12. openclaw.json 和 openclaw.last-known-good.json 由 ConfigLoader 处理
+            // 12. openclaw.json and openclaw.last-known-good.json are handled by ConfigLoader
 
             Log.i(TAG, "========================================")
             Log.i(TAG, "✅ AndroidForClaw 初始化完成")
@@ -102,7 +102,7 @@ object AndroidForClawInit {
     }
 
     /**
-     * 初始化 .device-id
+     * Initialize .device-id
      */
     private fun initDeviceId() {
         val deviceIdFile = File(BASE_DIR, ".device-id")
@@ -117,14 +117,14 @@ object AndroidForClawInit {
     }
 
     /**
-     * 初始化 agents/main/sessions/
+     * Initialize agents/main/sessions/
      */
     private fun initAgentsDirectory() {
         val sessionsDir = File(BASE_DIR, "agents/main/sessions")
         sessionsDir.mkdirs()
         Log.d(TAG, "✅ 创建 agents/main/sessions/")
 
-        // 创建 sessions.json 索引文件
+        // Create sessions.json index file
         val sessionsIndex = File(sessionsDir, "sessions.json")
         if (!sessionsIndex.exists()) {
             sessionsIndex.writeText("[]")
@@ -133,14 +133,14 @@ object AndroidForClawInit {
     }
 
     /**
-     * 初始化 canvas/
+     * Initialize canvas/
      */
     private fun initCanvasDirectory() {
         val canvasDir = File(BASE_DIR, "canvas")
         canvasDir.mkdirs()
         Log.d(TAG, "✅ 创建 canvas/")
 
-        // 创建 index.html 占位符
+        // Create index.html placeholder
         val indexHtml = File(canvasDir, "index.html")
         if (!indexHtml.exists()) {
             indexHtml.writeText("""
@@ -161,14 +161,14 @@ object AndroidForClawInit {
     }
 
     /**
-     * 初始化 cron/
+     * Initialize cron/
      */
     private fun initCronDirectory() {
         val cronDir = File(BASE_DIR, "cron")
         cronDir.mkdirs()
         Log.d(TAG, "✅ 创建 cron/")
 
-        // 创建 jobs.json
+        // Create jobs.json
         val jobsFile = File(cronDir, "jobs.json")
         if (!jobsFile.exists()) {
             jobsFile.writeText("[]")
@@ -177,21 +177,21 @@ object AndroidForClawInit {
     }
 
     /**
-     * 初始化 devices/
+     * Initialize devices/
      */
     private fun initDevicesDirectory() {
         val devicesDir = File(BASE_DIR, "devices")
         devicesDir.mkdirs()
         Log.d(TAG, "✅ 创建 devices/")
 
-        // 创建 paired.json
+        // Create paired.json
         val pairedFile = File(devicesDir, "paired.json")
         if (!pairedFile.exists()) {
             pairedFile.writeText("{}")
             Log.d(TAG, "✅ 创建 devices/paired.json")
         }
 
-        // 创建 pending.json
+        // Create pending.json
         val pendingFile = File(devicesDir, "pending.json")
         if (!pendingFile.exists()) {
             pendingFile.writeText("[]")
@@ -200,7 +200,7 @@ object AndroidForClawInit {
     }
 
     /**
-     * 初始化 update-check.json
+     * Initialize update-check.json
      */
     private fun initUpdateCheck() {
         val updateCheckFile = File(BASE_DIR, "update-check.json")
@@ -211,7 +211,7 @@ object AndroidForClawInit {
     }
 
     /**
-     * 初始化日志文件占位符
+     * Initialize log file placeholders
      */
     private fun initLogFiles() {
         val appLog = File(BASE_DIR, "app.log")
@@ -228,7 +228,7 @@ object AndroidForClawInit {
     }
 
     /**
-     * 获取 Device ID
+     * Get Device ID
      */
     fun getDeviceId(): String {
         val deviceIdFile = File(BASE_DIR, ".device-id")
@@ -240,7 +240,7 @@ object AndroidForClawInit {
     }
 
     /**
-     * 检查是否已初始化
+     * Check if already initialized
      */
     fun isInitialized(): Boolean {
         val baseDir = File(BASE_DIR)

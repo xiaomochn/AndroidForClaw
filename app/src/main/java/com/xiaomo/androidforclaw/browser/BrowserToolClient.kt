@@ -13,12 +13,12 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
- * browserforclaw 工具客户端
- * 用于 phoneforclaw 调用 browserforclaw 的浏览器工具
+ * BrowserForClaw Tool Client
+ * Used for phoneforclaw to call browserforclaw browser tools
  *
- * 通信方式: HTTP API
- * - 端点: POST http://localhost:8080/api/browser/execute
- * - 格式: {"tool": "browser_navigate", "args": {"url": "https://..."}}
+ * Communication method: HTTP API
+ * - Endpoint: POST http://localhost:8080/api/browser/execute
+ * - Format: {"tool": "browser_navigate", "args": {"url": "https://..."}}
  */
 class BrowserToolClient(private val context: Context) {
 
@@ -27,9 +27,9 @@ class BrowserToolClient(private val context: Context) {
         // BrowserForClaw uses port 8765 (AndroidForClaw Gateway uses 8080)
         private const val BROWSER_API_URL = "http://localhost:8765/api/browser/execute"
         private const val HEALTH_CHECK_URL = "http://localhost:8765/health"
-        private const val DEFAULT_TIMEOUT = 30000L  // 30 秒
+        private const val DEFAULT_TIMEOUT = 30000L  // 30 seconds
 
-        // BrowserForClaw 启动信息
+        // BrowserForClaw startup info
         private const val BROWSER_PACKAGE = "info.plateaukao.einkbro"
         private const val BROWSER_ACTIVITY = "info.plateaukao.einkbro/.activity.BrowserActivity"
     }
@@ -41,7 +41,7 @@ class BrowserToolClient(private val context: Context) {
         .build()
 
     /**
-     * 工具执行结果
+     * Tool execution result
      */
     data class ToolResult(
         val success: Boolean,
@@ -66,7 +66,7 @@ class BrowserToolClient(private val context: Context) {
     }
 
     /**
-     * 检查 BrowserForClaw 是否运行
+     * Check if BrowserForClaw is running
      */
     private suspend fun checkBrowserHealth(): Boolean = withContext(Dispatchers.IO) {
         try {
@@ -86,7 +86,7 @@ class BrowserToolClient(private val context: Context) {
     }
 
     /**
-     * 启动 BrowserForClaw
+     * Start BrowserForClaw
      */
     private suspend fun startBrowser(): Boolean = withContext(Dispatchers.IO) {
         try {
@@ -98,11 +98,11 @@ class BrowserToolClient(private val context: Context) {
             intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
 
-            // 等待浏览器启动和 HTTP 服务启动
-            // BrowserForClaw 需要时间启动 HTTP API 服务 (端口 8766)
+            // Wait for browser and HTTP service to start
+            // BrowserForClaw needs time to start HTTP API service (port 8766)
             Log.d(TAG, "Waiting for browser and HTTP API to start...")
 
-            // 轮询检查健康状态,最多等待 5 秒
+            // Poll health status, wait up to 5 seconds
             var attempts = 0
             val maxAttempts = 10
             while (attempts < maxAttempts) {
@@ -115,7 +115,7 @@ class BrowserToolClient(private val context: Context) {
                 Log.d(TAG, "⏳ Waiting for HTTP API... (attempt ${attempts}/$maxAttempts)")
             }
 
-            // 超时后最后一次检查
+            // Final check after timeout
             val isRunning = checkBrowserHealth()
             Log.w(TAG, "❌ Browser HTTP API not responding after ${maxAttempts * 500}ms. Health: $isRunning")
             isRunning
@@ -126,20 +126,20 @@ class BrowserToolClient(private val context: Context) {
     }
 
     /**
-     * 确保 BrowserForClaw 正在运行
-     * 带超时保护,避免无限等待
+     * Ensure BrowserForClaw is running
+     * With timeout protection to avoid infinite waiting
      */
     private suspend fun ensureBrowserRunning(): ToolResult {
         return try {
-            // 整体超时 10 秒
+            // Overall timeout 10 seconds
             withTimeout(10000L) {
-                // 1. 检查是否已运行
+                // 1. Check if already running
                 if (checkBrowserHealth()) {
                     Log.d(TAG, "Browser already running")
                     return@withTimeout ToolResult(success = true)
                 }
 
-                // 2. 尝试启动
+                // 2. Attempt to start
                 Log.d(TAG, "Browser not running, attempting to start...")
                 val started = startBrowser()
 
@@ -164,12 +164,12 @@ class BrowserToolClient(private val context: Context) {
     }
 
     /**
-     * 异步执行浏览器工具
+     * Execute browser tool asynchronously
      *
-     * @param tool 工具名称（如 "browser_navigate"）
-     * @param args 工具参数
-     * @param timeout 超时时间（毫秒），默认 30 秒
-     * @return 工具执行结果
+     * @param tool Tool name (e.g. "browser_navigate")
+     * @param args Tool arguments
+     * @param timeout Timeout in milliseconds, default 30 seconds
+     * @return Tool execution result
      */
     suspend fun executeToolAsync(
         tool: String,
@@ -179,25 +179,25 @@ class BrowserToolClient(private val context: Context) {
         return try {
             withTimeout(timeout) {
                 withContext(Dispatchers.IO) {
-                    // 确保 BrowserForClaw 正在运行
+                    // Ensure BrowserForClaw is running
                     val ensureResult = ensureBrowserRunning()
                     if (!ensureResult.success) {
                         return@withContext ensureResult
                     }
 
                     try {
-                        Log.d(TAG, "执行工具: $tool")
-                        Log.d(TAG, "参数: $args")
+                        Log.d(TAG, "Executing tool: $tool")
+                        Log.d(TAG, "Arguments: $args")
 
-                        // 构建 JSON 请求
+                        // Build JSON request
                         val requestJson = JSONObject().apply {
                             put("tool", tool)
                             put("args", JSONObject(args))
                         }
 
-                        Log.d(TAG, "请求 JSON: $requestJson")
+                        Log.d(TAG, "Request JSON: $requestJson")
 
-                        // 构建 HTTP 请求
+                        // Build HTTP request
                         val requestBody = requestJson.toString()
                             .toRequestBody("application/json".toMediaType())
 
@@ -206,12 +206,12 @@ class BrowserToolClient(private val context: Context) {
                             .post(requestBody)
                             .build()
 
-                        // 发送请求
+                        // Send request
                         val response = httpClient.newCall(request).execute()
                         val responseBody = response.body?.string() ?: ""
 
-                        Log.d(TAG, "响应状态: ${response.code}")
-                        Log.d(TAG, "响应体: ${responseBody.take(500)}")
+                        Log.d(TAG, "Response status: ${response.code}")
+                        Log.d(TAG, "Response body: ${responseBody.take(500)}")
 
                         if (!response.isSuccessful) {
                             return@withContext ToolResult(
@@ -220,7 +220,7 @@ class BrowserToolClient(private val context: Context) {
                             )
                         }
 
-                        // 解析响应
+                        // Parse response
                         val responseJson = JSONObject(responseBody)
                         val success = responseJson.optBoolean("success", false)
                         val error = if (responseJson.has("error")) responseJson.optString("error") else null
@@ -233,11 +233,11 @@ class BrowserToolClient(private val context: Context) {
                             ToolResult(success = false, error = error ?: "Unknown error")
                         }
 
-                        Log.d(TAG, "工具执行结果: success=${result.success}")
+                        Log.d(TAG, "Tool execution result: success=${result.success}")
                         result
 
                     } catch (e: Exception) {
-                        Log.e(TAG, "执行工具失败", e)
+                        Log.e(TAG, "Failed to execute tool", e)
                         ToolResult(success = false, error = "Exception: ${e.message}")
                     }
                 }
@@ -252,7 +252,7 @@ class BrowserToolClient(private val context: Context) {
     }
 
     /**
-     * 获取页面内容
+     * Get page content
      */
     suspend fun getContent(format: String = "text", selector: String? = null): ToolResult {
         val toolArgs = mutableMapOf<String, Any?>("format" to format)
@@ -263,35 +263,35 @@ class BrowserToolClient(private val context: Context) {
     }
 
     /**
-     * 等待指定时间
+     * Wait for specified time
      */
     suspend fun waitTime(timeMs: Long): ToolResult {
         return executeToolAsync("browser_wait", mapOf("timeMs" to timeMs))
     }
 
     /**
-     * 等待元素出现
+     * Wait for element to appear
      */
     suspend fun waitForSelector(selector: String, timeout: Long = 10000L): ToolResult {
         return executeToolAsync("browser_wait", mapOf("selector" to selector, "timeout" to timeout), timeout)
     }
 
     /**
-     * 等待文本出现
+     * Wait for text to appear
      */
     suspend fun waitForText(text: String, timeout: Long = 10000L): ToolResult {
         return executeToolAsync("browser_wait", mapOf("text" to text, "timeout" to timeout), timeout)
     }
 
     /**
-     * 等待 URL 匹配
+     * Wait for URL match
      */
     suspend fun waitForUrl(url: String, timeout: Long = 10000L): ToolResult {
         return executeToolAsync("browser_wait", mapOf("url" to url, "timeout" to timeout), timeout)
     }
 
     /**
-     * 将 JSONObject 转换为 Map
+     * Convert JSONObject to Map
      */
     private fun parseJsonToMap(json: JSONObject): Map<String, Any?> {
         val map = mutableMapOf<String, Any?>()
