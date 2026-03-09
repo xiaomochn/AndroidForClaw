@@ -5,19 +5,19 @@ import com.google.gson.Gson
 import java.security.MessageDigest
 
 /**
- * 工具循环检测器
- * 参考 OpenClaw 的 tool-loop-detection.ts 实现
+ * Tool loop detector
+ * Reference: OpenClaw's tool-loop-detection.ts implementation
  *
- * 检测以下几种循环模式:
- * 1. generic_repeat - 通用重复调用
- * 2. known_poll_no_progress - 已知轮询工具无进展
- * 3. ping_pong - 两个工具来回调用
- * 4. global_circuit_breaker - 全局断路器（严重循环）
+ * Detects the following loop patterns:
+ * 1. generic_repeat - Generic repeated calls
+ * 2. known_poll_no_progress - Known polling tools with no progress
+ * 3. ping_pong - Two tools calling back and forth
+ * 4. global_circuit_breaker - Global circuit breaker (critical loop)
  */
 object ToolLoopDetection {
     private const val TAG = "ToolLoopDetection"
 
-    // 默认配置 (对齐 OpenClaw)
+    // Default configuration (aligned with OpenClaw)
     private const val TOOL_CALL_HISTORY_SIZE = 30
     private const val WARNING_THRESHOLD = 10
     private const val CRITICAL_THRESHOLD = 20
@@ -26,7 +26,7 @@ object ToolLoopDetection {
     private val gson = Gson()
 
     /**
-     * 工具调用历史记录
+     * Tool call history record
      */
     data class ToolCallRecord(
         val toolName: String,
@@ -37,7 +37,7 @@ object ToolLoopDetection {
     )
 
     /**
-     * 循环检测结果
+     * Loop detection result
      */
     sealed class LoopDetectionResult {
         object NoLoop : LoopDetectionResult()
@@ -64,7 +64,7 @@ object ToolLoopDetection {
     }
 
     /**
-     * 会话状态 (保存工具调用历史)
+     * Session state (stores tool call history)
      */
     class SessionState {
         val toolCallHistory = ArrayDeque<ToolCallRecord>(TOOL_CALL_HISTORY_SIZE)
@@ -72,7 +72,7 @@ object ToolLoopDetection {
     }
 
     /**
-     * 计算工具调用的哈希 (toolName + params)
+     * Calculate hash for tool call (toolName + params)
      */
     fun hashToolCall(toolName: String, params: Map<String, Any?>): String {
         val paramsHash = digestStable(params)
@@ -80,16 +80,16 @@ object ToolLoopDetection {
     }
 
     /**
-     * 计算工具结果的哈希
+     * Calculate hash for tool result
      */
     fun hashToolOutcome(toolName: String, params: Map<String, Any?>, result: String, error: Throwable?): String? {
         if (error != null) {
             return "error:${digestStable(error.message ?: "unknown")}"
         }
 
-        // 对于已知的轮询工具,只哈希关键状态字段
+        // For known polling tools, hash only key state fields
         if (isKnownPollTool(toolName, params)) {
-            // 简化处理: 直接哈希结果内容
+            // Simplified: directly hash result content
             return digestStable(result.take(500))
         }
 
@@ -97,7 +97,7 @@ object ToolLoopDetection {
     }
 
     /**
-     * 检测工具调用循环
+     * Detect tool call loop
      */
     fun detectToolCallLoop(
         state: SessionState,
@@ -107,7 +107,7 @@ object ToolLoopDetection {
         val history = state.toolCallHistory
         val currentHash = hashToolCall(toolName, params)
 
-        // 1. Global circuit breaker (最高优先级)
+        // 1. Global circuit breaker (highest priority)
         val noProgress = getNoProgressStreak(history, toolName, currentHash)
         if (noProgress.count >= GLOBAL_CIRCUIT_BREAKER_THRESHOLD) {
             val warningKey = "global:$toolName:$currentHash:${noProgress.latestResultHash}"
@@ -137,7 +137,7 @@ object ToolLoopDetection {
 
         if (knownPollTool && noProgress.count >= WARNING_THRESHOLD) {
             val warningKey = "poll:$toolName:$currentHash:${noProgress.latestResultHash}"
-            // 只报告一次警告
+            // Report warning only once
             if (warningKey !in state.reportedWarnings) {
                 state.reportedWarnings.add(warningKey)
                 return LoopDetectionResult.LoopDetected(
@@ -180,7 +180,7 @@ object ToolLoopDetection {
             }
         }
 
-        // 4. Generic repeat (最后检查)
+        // 4. Generic repeat (last check)
         if (!knownPollTool) {
             val recentCount = history.count { it.toolName == toolName && it.argsHash == currentHash }
             if (recentCount >= WARNING_THRESHOLD) {
@@ -203,7 +203,7 @@ object ToolLoopDetection {
     }
 
     /**
-     * 记录工具调用
+     * Record tool call
      */
     fun recordToolCall(
         state: SessionState,
@@ -219,14 +219,14 @@ object ToolLoopDetection {
 
         state.toolCallHistory.addLast(record)
 
-        // 保持历史大小限制
+        // Maintain history size limit
         while (state.toolCallHistory.size > TOOL_CALL_HISTORY_SIZE) {
             state.toolCallHistory.removeFirst()
         }
     }
 
     /**
-     * 记录工具调用结果
+     * Record tool call outcome
      */
     fun recordToolCallOutcome(
         state: SessionState,
@@ -239,7 +239,7 @@ object ToolLoopDetection {
         val resultHash = hashToolOutcome(toolName, toolParams, result, error) ?: return
         val argsHash = hashToolCall(toolName, toolParams)
 
-        // 查找最近的匹配记录并更新
+        // Find and update most recent matching record
         var matched = false
         for (i in state.toolCallHistory.size - 1 downTo 0) {
             val call = state.toolCallHistory[i]
@@ -247,13 +247,13 @@ object ToolLoopDetection {
             if (call.toolName != toolName || call.argsHash != argsHash) continue
             if (call.resultHash != null) continue
 
-            // 更新 resultHash (需要替换整个对象)
+            // Update resultHash (need to replace entire object)
             state.toolCallHistory[i] = call.copy(resultHash = resultHash)
             matched = true
             break
         }
 
-        // 如果没有匹配,添加新记录
+        // If no match, add new record
         if (!matched) {
             val record = ToolCallRecord(
                 toolName = toolName,
@@ -263,7 +263,7 @@ object ToolLoopDetection {
             )
             state.toolCallHistory.addLast(record)
 
-            // 保持历史大小限制
+            // Maintain history size limit
             while (state.toolCallHistory.size > TOOL_CALL_HISTORY_SIZE) {
                 state.toolCallHistory.removeFirst()
             }
@@ -271,7 +271,7 @@ object ToolLoopDetection {
     }
 
     /**
-     * 获取无进展连续次数
+     * Get no-progress streak count
      */
     private fun getNoProgressStreak(
         history: ArrayDeque<ToolCallRecord>,
@@ -303,7 +303,7 @@ object ToolLoopDetection {
     }
 
     /**
-     * 获取 ping-pong 连续次数
+     * Get ping-pong streak count
      */
     private fun getPingPongStreak(
         history: ArrayDeque<ToolCallRecord>,
@@ -315,7 +315,7 @@ object ToolLoopDetection {
 
         val last = history.last()
 
-        // 找到最近的不同签名
+        // Find most recent different signature
         var otherSignature: String? = null
         for (i in history.size - 2 downTo 0) {
             val call = history[i]
@@ -329,7 +329,7 @@ object ToolLoopDetection {
             return PingPongStreak(0, null, false)
         }
 
-        // 计算交替尾部长度
+        // Calculate alternating tail length
         var alternatingTailCount = 0
         for (i in history.size - 1 downTo 0) {
             val call = history[i]
@@ -342,13 +342,13 @@ object ToolLoopDetection {
             return PingPongStreak(0, null, false)
         }
 
-        // 检查当前签名是否匹配预期
+        // Check if current signature matches expected
         val expectedCurrentSignature = otherSignature
         if (currentSignature != expectedCurrentSignature) {
             return PingPongStreak(0, null, false)
         }
 
-        // 检查是否有 no-progress 证据
+        // Check for no-progress evidence
         val tailStart = maxOf(0, history.size - alternatingTailCount)
         var firstHashA: String? = null
         var firstHashB: String? = null
@@ -389,10 +389,10 @@ object ToolLoopDetection {
     }
 
     /**
-     * 是否是已知的轮询工具
+     * Check if it's a known polling tool
      */
     private fun isKnownPollTool(toolName: String, params: Map<String, Any?>): Boolean {
-        // Android 平台特定的轮询工具
+        // Android platform specific polling tools
         return when (toolName) {
             "wait" -> true
             "wait_for_element" -> true
@@ -402,7 +402,7 @@ object ToolLoopDetection {
     }
 
     /**
-     * 稳定哈希 (确保相同输入产生相同哈希)
+     * Stable hash (ensure same input produces same hash)
      */
     private fun digestStable(value: Any?): String {
         val serialized = stableStringify(value)
@@ -412,7 +412,7 @@ object ToolLoopDetection {
     }
 
     /**
-     * 稳定序列化 (排序 key)
+     * Stable serialization (sorted keys)
      */
     private fun stableStringify(value: Any?): String {
         return when (value) {

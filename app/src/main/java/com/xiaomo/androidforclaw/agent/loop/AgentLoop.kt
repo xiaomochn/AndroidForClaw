@@ -25,80 +25,80 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Agent Loop - 核心循环引擎
- * 参考 OpenClaw 的 Agent Loop 实现
+ * Agent Loop - Core execution engine
+ * Reference: OpenClaw's Agent Loop implementation
  *
- * 执行流程:
- * 1. 接收用户消息 + 系统提示词
- * 2. 调用 LLM (支持 reasoning)
- * 3. LLM 通过 function calling 选择工具
- * 4. 直接执行 LLM 选择的工具
- * 5. 重复步骤 2-4，直到 LLM 返回最终结果或达到最大迭代次数
+ * Execution flow:
+ * 1. Receive user message + system prompt
+ * 2. Call LLM (with reasoning support)
+ * 3. LLM selects tools via function calling
+ * 4. Execute tools selected by LLM directly
+ * 5. Repeat steps 2-4 until LLM returns final result or reaches max iterations
  *
- * 架构（参考 OpenClaw pi-tools）:
- * - ToolRegistry: 通用工具（read, write, exec, web_fetch）
- * - AndroidToolRegistry: Android 平台工具（tap, screenshot, open_app）
- * - SkillsLoader: Skills 文档（mobile-operations.md）
+ * Architecture (reference: OpenClaw pi-tools):
+ * - ToolRegistry: Universal tools (read, write, exec, web_fetch)
+ * - AndroidToolRegistry: Android platform tools (tap, screenshot, open_app)
+ * - SkillsLoader: Skills documents (mobile-operations.md)
  */
 class AgentLoop(
     private val llmProvider: UnifiedLLMProvider,
     private val toolRegistry: ToolRegistry,
     private val androidToolRegistry: AndroidToolRegistry,
-    private val contextManager: ContextManager? = null,  // 可选的上下文管理器
+    private val contextManager: ContextManager? = null,  // Optional context manager
     private val maxIterations: Int = 40,
     private val modelRef: String? = null
 ) {
     companion object {
         private const val TAG = "AgentLoop"
-        private const val MAX_OVERFLOW_RECOVERY_ATTEMPTS = 3  // 对齐 OpenClaw
-        private const val LLM_TIMEOUT_MS = 60_000L  // LLM 单次调用超时: 60 秒
-        private const val MAX_CONSECUTIVE_ERRORS = 3  // 连续相同错误阈值: 3 次
+        private const val MAX_OVERFLOW_RECOVERY_ATTEMPTS = 3  // Aligned with OpenClaw
+        private const val LLM_TIMEOUT_MS = 60_000L  // LLM single call timeout: 60 seconds
+        private const val MAX_CONSECUTIVE_ERRORS = 3  // Consecutive same error threshold: 3 times
     }
 
     private val gson = Gson()
 
-    // 日志文件配置
+    // Log file configuration
     private val logDir = File("/sdcard/.androidforclaw/workspace/logs")
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US)
     private var sessionLogFile: File? = null
     private val logBuffer = StringBuilder()
 
-    // ✅ 缓存 Tool Definitions，避免每次迭代重复构建
-    // 合并通用工具和 Android 平台工具
+    // ✅ Cache Tool Definitions to avoid rebuilding on each iteration
+    // Merge universal tools and Android platform tools
     private val allToolDefinitions by lazy {
         toolRegistry.getToolDefinitions() + androidToolRegistry.getToolDefinitions()
     }
 
-    // 进度更新流
+    // Progress update flow
     private val _progressFlow = MutableSharedFlow<ProgressUpdate>(
         replay = 1,
         extraBufferCapacity = 10
     )
     val progressFlow: SharedFlow<ProgressUpdate> = _progressFlow.asSharedFlow()
 
-    // 停止标志
+    // Stop flag
     @Volatile
     private var shouldStop = false
 
-    // 循环检测器状态
+    // Loop detector state
     private val loopDetectionState = ToolLoopDetection.SessionState()
 
-    // 错误追踪: 用于检测连续相同错误
+    // Error tracker: used to detect consecutive identical errors
     private val errorTracker = mutableListOf<String>()
 
     /**
-     * 记录错误并检查是否达到阈值
-     * @return true 如果应该停止执行
+     * Record error and check if threshold is reached
+     * @return true if execution should stop
      */
     private fun trackError(errorMessage: String): Boolean {
         errorTracker.add(errorMessage)
 
-        // 只保留最近的错误记录
+        // Keep only recent error records
         if (errorTracker.size > MAX_CONSECUTIVE_ERRORS) {
             errorTracker.removeAt(0)
         }
 
-        // 检查最近的错误是否都相同
+        // Check if all recent errors are identical
         if (errorTracker.size >= MAX_CONSECUTIVE_ERRORS) {
             val allSame = errorTracker.all { it == errorMessage }
             if (allSame) {
@@ -112,16 +112,16 @@ class AgentLoop(
     }
 
     /**
-     * 写入日志到文件和缓冲区
+     * Write log to file and buffer
      */
     private fun writeLog(message: String) {
         val timestamp = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
         val logLine = "[$timestamp] $message"
 
-        // 添加到缓冲区
+        // Add to buffer
         logBuffer.appendLine(logLine)
 
-        // 写入到文件（如果文件已创建）
+        // Write to file (if file is created)
         sessionLogFile?.let { file ->
             try {
                 file.appendText(logLine + "\n")
@@ -130,28 +130,28 @@ class AgentLoop(
             }
         }
 
-        // 同时输出到 logcat
+        // Also output to logcat
         Log.d(TAG, message)
     }
 
     /**
-     * 初始化会话日志文件
+     * Initialize session log file
      */
     private fun initSessionLog(userMessage: String) {
         try {
-            // 确保日志目录存在
+            // Ensure log directory exists
             logDir.mkdirs()
 
-            // 创建日志文件（使用时间戳 + 用户消息前缀作为文件名）
+            // Create log file (using timestamp + user message prefix as filename)
             val timestamp = dateFormat.format(Date())
             val messagePrefix = userMessage.take(20).replace(Regex("[^a-zA-Z0-9\\u4e00-\\u9fa5]"), "_")
             val filename = "agentloop_${timestamp}_${messagePrefix}.log"
             sessionLogFile = File(logDir, filename)
 
-            // 清空缓冲区
+            // Clear buffer
             logBuffer.clear()
 
-            // 写入会话头部
+            // Write session header
             sessionLogFile?.writeText("========== Agent Loop Session ==========\n")
             sessionLogFile?.appendText("Start time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())}\n")
             sessionLogFile?.appendText("User message: $userMessage\n")
@@ -160,12 +160,12 @@ class AgentLoop(
             Log.i(TAG, "📝 Session log initialized: ${sessionLogFile?.absolutePath}")
         } catch (e: Exception) {
             Log.w(TAG, "Failed to initialize session log (will continue without file logging): ${e.message}")
-            sessionLogFile = null  // 禁用文件日志，但继续执行
+            sessionLogFile = null  // Disable file logging, but continue execution
         }
     }
 
     /**
-     * 完成会话日志
+     * Finalize session log
      */
     private fun finalizeSessionLog(result: AgentResult) {
         sessionLogFile?.let { file ->
@@ -185,13 +185,13 @@ class AgentLoop(
     }
 
     /**
-     * 运行 Agent Loop
+     * Run Agent Loop
      *
-     * @param systemPrompt 系统提示词
-     * @param userMessage 用户消息
-     * @param contextHistory 历史对话记录
-     * @param reasoningEnabled 是否启用 reasoning
-     * @return AgentResult 包含最终内容、使用的工具、所有消息
+     * @param systemPrompt System prompt
+     * @param userMessage User message
+     * @param contextHistory Historical conversation records
+     * @param reasoningEnabled Whether to enable reasoning
+     * @return AgentResult containing final content, tools used, and all messages
      */
     suspend fun run(
         systemPrompt: String,
@@ -202,10 +202,10 @@ class AgentLoop(
         shouldStop = false
         val messages = mutableListOf<Message>()
 
-        // 初始化会话日志
+        // Initialize session log
         initSessionLog(userMessage)
 
-        // 重置上下文管理器
+        // Reset context manager
         contextManager?.reset()
 
         writeLog("========== Agent Loop 开始 ==========")
@@ -216,17 +216,17 @@ class AgentLoop(
         writeLog("📱 Android tools: ${androidToolRegistry.getToolCount()}")
         writeLog("🔄 Context manager: ${if (contextManager != null) "enabled" else "disabled"}")
 
-        // 1. 添加系统提示词
+        // 1. Add system prompt
         messages.add(systemMessage(systemPrompt))
         writeLog("✅ System prompt added (${systemPrompt.length} chars)")
 
-        // 2. 添加历史对话
+        // 2. Add conversation history
         messages.addAll(contextHistory)
         if (contextHistory.isNotEmpty()) {
             writeLog("✅ Context history added: ${contextHistory.size} messages")
         }
 
-        // 3. 添加用户消息
+        // 3. Add user message
         messages.add(userMessage(userMessage))
         writeLog("✅ User message: $userMessage")
         writeLog("📤 准备发送第一次 LLM 请求...")
@@ -235,14 +235,14 @@ class AgentLoop(
         var finalContent: String? = null
         val toolsUsed = mutableListOf<String>()
 
-        // 4. 主循环
+        // 4. Main loop
         while (iteration < maxIterations && !shouldStop) {
             iteration++
             val iterationStartTime = System.currentTimeMillis()
             writeLog("========== Iteration $iteration ==========")
 
             try {
-                // 4.1 调用 LLM
+                // 4.1 Call LLM
                 writeLog("📢 发送迭代进度更新...")
                 _progressFlow.emit(ProgressUpdate.Iteration(iteration))
                 writeLog("✅ 迭代进度已发送")
@@ -250,12 +250,12 @@ class AgentLoop(
                 writeLog("📤 调用 UnifiedLLMProvider.chatWithTools...")
                 writeLog("   Messages: ${messages.size}, Tools+Skills: ${allToolDefinitions.size}")
 
-                // 🔔 发送中间反馈: 正在思考第 X 步
+                // 🔔 Send intermediate feedback: thinking step X
                 _progressFlow.emit(ProgressUpdate.Thinking(iteration))
 
                 val llmStartTime = System.currentTimeMillis()
 
-                // ⏱️ 添加超时保护
+                // ⏱️ Add timeout protection
                 val response = try {
                     kotlinx.coroutines.withTimeout(LLM_TIMEOUT_MS) {
                         llmProvider.chatWithTools(
@@ -270,14 +270,14 @@ class AgentLoop(
                     writeLog("❌ $errorMsg")
                     Log.e(TAG, errorMsg)
 
-                    // 记录超时错误
+                    // Record timeout error
                     if (trackError(errorMsg)) {
                         shouldStop = true
                         finalContent = "任务失败: $errorMsg"
                         break
                     }
 
-                    // 添加超时错误消息，让 LLM 知道
+                    // Add timeout error message to inform LLM
                     messages.add(userMessage("系统提示: LLM 调用超时，请尝试简化任务或分步执行"))
                     continue
                 }
@@ -286,23 +286,23 @@ class AgentLoop(
 
                 writeLog("✅ LLM 响应已收到 [耗时: ${llmDuration}ms]")
 
-                // ⚠️ 如果响应时间过长，记录警告
+                // ⚠️ Log warning if response time is too long
                 if (llmDuration > 30_000) {
                     writeLog("⚠️ LLM 响应耗时较长: ${llmDuration}ms")
                 }
 
-                // 4.2 显示 reasoning 思考过程
+                // 4.2 Display reasoning thinking process
                 response.thinkingContent?.let { reasoning ->
                     writeLog("🧠 Reasoning (${reasoning.length} chars):")
                     writeLog("   ${reasoning.take(500)}${if (reasoning.length > 500) "..." else ""}")
                     _progressFlow.emit(ProgressUpdate.Reasoning(reasoning, llmDuration))
                 }
 
-                // 4.3 检查是否有 function calls
+                // 4.3 Check if there are function calls
                 if (response.toolCalls != null && response.toolCalls.isNotEmpty()) {
                     writeLog("Function calls: ${response.toolCalls.size}")
 
-                    // 添加 assistant 消息（包含 function calls）
+                    // Add assistant message (containing function calls)
                     messages.add(
                         assistantMessage(
                             content = response.content,
@@ -316,7 +316,7 @@ class AgentLoop(
                         )
                     )
 
-                    // 执行每个 tool/skill (直接执行 LLM 选择的能力)
+                    // Execute each tool/skill (directly execute the capabilities selected by LLM)
                     var totalExecDuration = 0L
                     for (toolCall in response.toolCalls) {
                         val functionName = toolCall.name
@@ -325,7 +325,7 @@ class AgentLoop(
                         writeLog("🔧 Function: $functionName")
                         writeLog("   Args: $argsJson")
 
-                        // 解析参数
+                        // Parse arguments
                         val args = try {
                             @Suppress("UNCHECKED_CAST")
                             gson.fromJson(argsJson, Map::class.java) as Map<String, Any?>
@@ -335,7 +335,7 @@ class AgentLoop(
                             mapOf<String, Any?>()
                         }
 
-                        // ✅ 检测工具调用循环 (在执行前)
+                        // ✅ Detect tool call loop (before execution)
                         val loopDetection = ToolLoopDetection.detectToolCallLoop(
                             state = loopDetectionState,
                             toolName = functionName,
@@ -348,12 +348,12 @@ class AgentLoop(
                                 writeLog("$logLevel Loop detected: ${loopDetection.detector} (count: ${loopDetection.count})")
                                 writeLog("   ${loopDetection.message}")
 
-                                // Critical 级别: 中断执行
+                                // Critical level: abort execution
                                 if (loopDetection.level == ToolLoopDetection.LoopDetectionResult.Level.CRITICAL) {
                                     writeLog("🛑 Critical loop detected, stopping execution")
                                     Log.e(TAG, "🛑 Critical loop detected: ${loopDetection.message}")
 
-                                    // 添加错误消息到对话
+                                    // Add error message to conversation
                                     messages.add(
                                         toolMessage(
                                             toolCallId = toolCall.id,
@@ -369,13 +369,13 @@ class AgentLoop(
                                         critical = true
                                     ))
 
-                                    // 中断整个循环
+                                    // Abort entire loop
                                     shouldStop = true
                                     finalContent = "Task failed: ${loopDetection.message}"
                                     break
                                 }
 
-                                // Warning 级别: 注入警告但继续执行
+                                // Warning level: inject warning but continue execution
                                 writeLog("⚠️ Loop warning injected into conversation")
                                 messages.add(
                                     toolMessage(
@@ -392,15 +392,15 @@ class AgentLoop(
                                     critical = false
                                 ))
 
-                                // Warning 后跳过本次工具调用
+                                // Skip this tool call after warning
                                 continue
                             }
                             ToolLoopDetection.LoopDetectionResult.NoLoop -> {
-                                // 无循环,继续执行
+                                // No loop, continue execution
                             }
                         }
 
-                        // 记录工具调用 (在执行前)
+                        // Record tool call (before execution)
                         ToolLoopDetection.recordToolCall(
                             state = loopDetectionState,
                             toolName = functionName,
@@ -410,10 +410,10 @@ class AgentLoop(
 
                         toolsUsed.add(functionName)
 
-                        // 发送调用进度更新
+                        // Send call progress update
                         _progressFlow.emit(ProgressUpdate.ToolCall(functionName, args))
 
-                        // ✅ 先从通用工具查找，再从 Android 工具查找
+                        // ✅ Search universal tools first, then Android tools
                         val execStartTime = System.currentTimeMillis()
                         val result = if (toolRegistry.contains(functionName)) {
                             writeLog("   → Universal tool")
@@ -432,17 +432,17 @@ class AgentLoop(
                         writeLog("   Result: ${result.success}, ${result.content.take(200)}")
                         writeLog("   ⏱️ 执行耗时: ${execDuration}ms")
 
-                        // 🔍 追踪工具执行错误
+                        // 🔍 Track tool execution errors
                         if (!result.success) {
                             val errorMsg = result.content
                             writeLog("   ⚠️ 工具执行失败: $errorMsg")
 
-                            // 检查是否达到错误阈值
+                            // Check if error threshold is reached
                             if (trackError("$functionName: $errorMsg")) {
                                 shouldStop = true
                                 finalContent = "任务失败: 连续 $MAX_CONSECUTIVE_ERRORS 次相同错误 - $errorMsg"
 
-                                // 添加错误消息
+                                // Add error message
                                 messages.add(
                                     toolMessage(
                                         toolCallId = toolCall.id,
@@ -453,14 +453,14 @@ class AgentLoop(
                                 break
                             }
                         } else {
-                            // 成功执行，清空错误追踪
+                            // Successful execution, clear error tracker
                             if (errorTracker.isNotEmpty()) {
                                 writeLog("   ✅ 工具执行成功，清空错误追踪")
                                 errorTracker.clear()
                             }
                         }
 
-                        // 记录工具调用结果 (用于循环检测)
+                        // Record tool call result (for loop detection)
                         ToolLoopDetection.recordToolCallOutcome(
                             state = loopDetectionState,
                             toolName = functionName,
@@ -470,7 +470,7 @@ class AgentLoop(
                             toolCallId = toolCall.id
                         )
 
-                        // 添加结果到消息列表
+                        // Add result to message list
                         messages.add(
                             toolMessage(
                                 toolCallId = toolCall.id,
@@ -479,10 +479,10 @@ class AgentLoop(
                             )
                         )
 
-                        // 发送结果更新
+                        // Send result update
                         _progressFlow.emit(ProgressUpdate.ToolResult(functionName, result.toString(), execDuration))
 
-                        // 检查是否是 stop skill
+                        // Check if it's stop skill
                         if (functionName == "stop") {
                             val metadata = result.metadata
                             val stopped = metadata["stopped"] as? Boolean ?: false
@@ -495,18 +495,18 @@ class AgentLoop(
                         }
                     }
 
-                    // 继续循环，让 LLM 看到 function 结果后决定下一步
+                    // Continue loop, let LLM decide next step after seeing function results
                     if (shouldStop) break
 
                     val iterationDuration = System.currentTimeMillis() - iterationStartTime
                     writeLog("⏱️ 本轮迭代总耗时: ${iterationDuration}ms (LLM: ${llmDuration}ms, 执行: ${totalExecDuration}ms)")
 
-                    // 发送迭代完成事件（带时间统计）
+                    // Send iteration complete event (with time statistics)
                     _progressFlow.emit(ProgressUpdate.IterationComplete(iteration, iterationDuration, llmDuration, totalExecDuration))
                     continue
                 }
 
-                // 4.4 没有工具调用，说明 LLM 给出了最终答案
+                // 4.4 No tool calls, meaning LLM provided final answer
                 finalContent = response.content
                 messages.add(assistantMessage(content = finalContent))
 
@@ -519,7 +519,7 @@ class AgentLoop(
                 Log.e(TAG, "Iteration $iteration error", e)
                 LayoutExceptionLogger.log("AgentLoop#run#iteration$iteration", e)
 
-                // 检查是否是上下文超限错误
+                // Check if it's a context overflow error
                 val errorMessage = ContextErrors.extractErrorMessage(e)
                 val isContextOverflow = ContextErrors.isLikelyContextOverflowError(errorMessage)
 
@@ -528,7 +528,7 @@ class AgentLoop(
                     Log.w(TAG, "🔄 检测到上下文超限，尝试恢复...")
                     _progressFlow.emit(ProgressUpdate.ContextOverflow("Context overflow detected, attempting recovery..."))
 
-                    // 尝试恢复
+                    // Attempt recovery
                     val recoveryResult = contextManager.handleContextOverflow(
                         error = e,
                         messages = messages
@@ -543,11 +543,11 @@ class AgentLoop(
                                 attempt = recoveryResult.attempt
                             ))
 
-                            // 替换消息列表
+                            // Replace message list
                             messages.clear()
                             messages.addAll(recoveryResult.messages)
 
-                            // 重试当前迭代
+                            // Retry current iteration
                             continue
                         }
                         is ContextRecoveryResult.CannotRecover -> {
@@ -560,16 +560,16 @@ class AgentLoop(
                         }
                     }
                 } else {
-                    // 非上下文超限错误
+                    // Non-context overflow error
                     _progressFlow.emit(ProgressUpdate.Error(e.message ?: "Unknown error"))
 
-                    // 尝试继续或停止
+                    // Try to continue or stop
                     if (e.message?.contains("timeout", ignoreCase = true) == true) {
-                        // 超时错误，可以重试
+                        // Timeout error, can retry
                         writeLog("Timeout error, retrying...")
                         continue
                     } else {
-                        // 其他错误，停止循环
+                        // Other errors, stop loop
                         finalContent = "执行异常: ${e.message}"
                         break
                     }
@@ -577,7 +577,7 @@ class AgentLoop(
             }
         }
 
-        // 5. 处理循环结束
+        // 5. Handle loop end
         if (finalContent == null && iteration >= maxIterations) {
             writeLog("Max iterations ($maxIterations) reached")
             Log.w(TAG, "Max iterations ($maxIterations) reached")
@@ -596,14 +596,14 @@ class AgentLoop(
             iterations = iteration
         )
 
-        // 完成会话日志
+        // Finalize session log
         finalizeSessionLog(result)
 
         return result
     }
 
     /**
-     * 停止 Agent Loop
+     * Stop Agent Loop
      */
     fun stop() {
         shouldStop = true
@@ -612,7 +612,7 @@ class AgentLoop(
 }
 
 /**
- * Agent 执行结果
+ * Agent execution result
  */
 data class AgentResult(
     val finalContent: String,
@@ -622,37 +622,37 @@ data class AgentResult(
 )
 
 /**
- * 进度更新
+ * Progress update
  */
 sealed class ProgressUpdate {
-    /** 开始新迭代 */
+    /** Start new iteration */
     data class Iteration(val number: Int) : ProgressUpdate()
 
-    /** 正在思考第 X 步（中间反馈） */
+    /** Thinking step X (intermediate feedback) */
     data class Thinking(val iteration: Int) : ProgressUpdate()
 
-    /** Reasoning 思考过程 */
+    /** Reasoning thinking process */
     data class Reasoning(val content: String, val llmDuration: Long) : ProgressUpdate()
 
-    /** 工具调用 */
+    /** Tool call */
     data class ToolCall(val name: String, val arguments: Map<String, Any?>) : ProgressUpdate()
 
-    /** 工具结果 */
+    /** Tool result */
     data class ToolResult(val name: String, val result: String, val execDuration: Long) : ProgressUpdate()
 
-    /** 迭代完成 */
+    /** Iteration complete */
     data class IterationComplete(val number: Int, val iterationDuration: Long, val llmDuration: Long, val execDuration: Long) : ProgressUpdate()
 
-    /** 上下文超限 */
+    /** Context overflow */
     data class ContextOverflow(val message: String) : ProgressUpdate()
 
-    /** 上下文恢复成功 */
+    /** Context recovered successfully */
     data class ContextRecovered(val strategy: String, val attempt: Int) : ProgressUpdate()
 
-    /** 错误 */
+    /** Error */
     data class Error(val message: String) : ProgressUpdate()
 
-    /** 循环检测 */
+    /** Loop detected */
     data class LoopDetected(
         val detector: String,
         val count: Int,
