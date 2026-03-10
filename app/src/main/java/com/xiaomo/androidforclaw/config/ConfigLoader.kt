@@ -124,14 +124,14 @@ class ConfigLoader(private val context: Context) {
 
     /**
      * 创建默认配置对象
-     * 从 assets 中的 openclaw.json.example 加载
+     * 从 assets 中的 openclaw.json.default 加载
      */
     private fun createDefaultOpenClawConfigObject(): OpenClawConfig {
         val defaultConfigJson = try {
-            context.assets.open("openclaw.json.example").bufferedReader().use { it.readText() }
+            context.assets.open("openclaw.json.default").bufferedReader().use { it.readText() }
         } catch (e: Exception) {
-            Log.e(TAG, "无法从 assets 读取 openclaw.json.example: ${e.message}")
-            throw Exception("Missing openclaw.json.example in assets", e)
+            Log.e(TAG, "无法从 assets 读取 openclaw.json.default: ${e.message}")
+            throw Exception("Missing openclaw.json.default in assets", e)
         }
         return gson.fromJson(defaultConfigJson, OpenClawConfig::class.java)
     }

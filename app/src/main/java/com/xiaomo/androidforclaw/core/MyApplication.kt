@@ -998,7 +998,8 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
                             Log.d(TAG, "✅ 消息包含 @_all")
                         } else if (event.mentions.isEmpty()) {
                             // No @mention at all
-                            Log.d(TAG, "❌ 群消息需要 @机器人，但没有任何 @mention，忽略此消息")
+                            Log.w(TAG, "❌ 群消息需要 @机器人，但没有任何 @mention，忽略此消息")
+                            Log.w(TAG, "   消息内容: ${event.content}")
                             return
                         } else {
                             // Has @mention, check if bot is @mentioned
@@ -1010,9 +1011,10 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
                                 return
                             } else if (botOpenId !in event.mentions) {
                                 // Has bot open_id, but message doesn't @ bot
-                                Log.d(TAG, "❌ 群消息 @了其他人但没有 @机器人(${botOpenId})，忽略此消息")
-                                Log.d(TAG, "   Bot Open ID: $botOpenId")
-                                Log.d(TAG, "   Mentions: ${event.mentions}")
+                                Log.w(TAG, "❌ 群消息 @了其他人但没有 @机器人(${botOpenId})，忽略此消息")
+                                Log.w(TAG, "   消息内容: ${event.content}")
+                                Log.w(TAG, "   Bot Open ID: $botOpenId")
+                                Log.w(TAG, "   Mentions: ${event.mentions}")
                                 return
                             } else {
                                 Log.d(TAG, "✅ 群消息包含机器人的 @mention")
