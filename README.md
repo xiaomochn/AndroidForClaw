@@ -155,9 +155,17 @@ curl -X POST http://手机IP:8080/gateway \
 
 **📥 最新版本**: [v1.0.0](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v1.0.0) | **📦 浏览文件**: [releases/](releases/)
 
+> **🚀 国内加速下载**（GitHub 下载慢？用这个）：
+>
+> | APK | 加速链接 |
+> |-----|---------|
+> | AndroidForClaw (主应用, ~22MB) | [⬇️ 加速下载](https://ghfast.top/https://github.com/xiaomochn/AndroidForClaw/releases/download/v1.0.0/AndroidForClaw-v1.0.0-release.apk) |
+> | S4Claw (无障碍+截图, ~4.4MB) | [⬇️ 加速下载](https://ghfast.top/https://github.com/xiaomochn/AndroidForClaw/releases/download/v1.0.0/S4Claw-v1.0.0-release.apk) |
+> | BrowserForClaw (AI 浏览器, ~8.4MB, 可选) | [⬇️ 加速下载](https://ghfast.top/https://github.com/xiaomochn/AndroidForClaw/releases/download/v1.0.0/BrowserForClaw-v1.0.0-release.apk) |
+
 1. **下载 APK**
    ```
-   AndroidForClaw-v1.0.0-release.apk   (主应用, ~31MB)
+   AndroidForClaw-v1.0.0-release.apk   (主应用, ~22MB)
    Screen4Claw-v1.0.0-release.apk      (S4Claw: 无障碍服务+截图, ~4.4MB)
    BClaw-v1.0.0-release.apk            (Browser4Claw: AI 浏览器, ~8.4MB, 可选)
    ```

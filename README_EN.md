@@ -157,11 +157,19 @@ curl -X POST http://phone-ip:8080/gateway \
 
 ### Method 1: Download Pre-built APK (Recommended)
 
-**📥 Latest Release**: [v2.5.0](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v2.5.0) | **📦 Browse Files**: [releases/](https://github.com/xiaomochn/AndroidForClaw/tree/main/releases)
+**📥 Latest Release**: [v1.0.0](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v1.0.0) | **📦 Browse Files**: [releases/](https://github.com/xiaomochn/AndroidForClaw/tree/main/releases)
+
+> **🚀 Mirror Download** (faster for users in China):
+>
+> | APK | Mirror Link |
+> |-----|------------|
+> | AndroidForClaw (Main, ~22MB) | [⬇️ Download](https://ghfast.top/https://github.com/xiaomochn/AndroidForClaw/releases/download/v1.0.0/AndroidForClaw-v1.0.0-release.apk) |
+> | S4Claw (Accessibility, ~4.4MB) | [⬇️ Download](https://ghfast.top/https://github.com/xiaomochn/AndroidForClaw/releases/download/v1.0.0/S4Claw-v1.0.0-release.apk) |
+> | BrowserForClaw (Browser, ~8.4MB, Optional) | [⬇️ Download](https://ghfast.top/https://github.com/xiaomochn/AndroidForClaw/releases/download/v1.0.0/BrowserForClaw-v1.0.0-release.apk) |
 
 1. **Download APK**
    ```
-   AndroidForClaw-v1.0.0-release.apk   (Main app, ~31MB)
+   AndroidForClaw-v1.0.0-release.apk   (Main app, ~22MB)
    Screen4Claw-v1.0.0-release.apk      (S4Claw: Accessibility & Screenshot, ~4.4MB)
    BClaw-v1.0.0-release.apk            (Browser4Claw: Browser for AI, ~8.4MB, Optional)
    ```
