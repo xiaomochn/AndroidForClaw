@@ -242,24 +242,14 @@ class ModelSetupActivity : AppCompatActivity() {
         val userInputKey = binding.etSetupApiKey.text?.toString()?.trim()
         val selectedModelDisplay = binding.actModel.text?.toString()?.trim()
 
-        // If user provided a key, use it; otherwise keep the built-in default key from assets
+        // If user provided a key, use it; otherwise use the built-in encrypted key
         val apiKey = if (userInputKey.isNullOrEmpty()) {
-            // Read built-in key from assets/openclaw.json.default.txt
-            try {
-                val defaultJson = assets.open("openclaw.json.default.txt").bufferedReader().readText()
-                val jsonObj = org.json.JSONObject(defaultJson)
-                val providers = jsonObj.optJSONObject("models")?.optJSONObject("providers")
-                val firstProvider = providers?.keys()?.let { if (it.hasNext()) providers.optJSONObject(it.next()) else null }
-                val builtInKey = firstProvider?.optString("apiKey", "") ?: ""
-                if (builtInKey.isEmpty() || builtInKey.startsWith("\${")) {
-                    binding.tilApiKey.error = "请输入 API Key"
-                    return
-                }
-                builtInKey
-            } catch (e: Exception) {
+            val builtInKey = com.xiaomo.androidforclaw.config.BuiltInKeyProvider.getKey()
+            if (builtInKey.isNullOrEmpty()) {
                 binding.tilApiKey.error = "请输入 API Key"
                 return
             }
+            builtInKey
         } else {
             userInputKey
         }
