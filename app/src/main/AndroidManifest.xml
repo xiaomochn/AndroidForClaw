@@ -93,6 +93,13 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
 
+        <!-- 模型配置引导页（首次启动） -->
+        <activity
+            android:name="com.xiaomo.androidforclaw.ui.activity.ModelSetupActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
         <!-- 配置页面 -->
         <activity
             android:name="com.xiaomo.androidforclaw.ui.activity.ConfigActivity"

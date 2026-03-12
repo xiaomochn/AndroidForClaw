@@ -119,6 +119,12 @@ class MainActivityCompose : ComponentActivity() {
         // Check and request file management permission
         checkAndRequestStoragePermission()
 
+        // Check if model setup is needed (first run, no API key configured)
+        if (ModelSetupActivity.isNeeded(this)) {
+            Log.i(TAG, "🔧 首次启动，打开模型配置引导...")
+            startActivity(Intent(this, ModelSetupActivity::class.java))
+        }
+
         setContent {
             // Save ViewModel reference for BroadcastReceiver use
             val viewModel: ChatViewModel = viewModel()
