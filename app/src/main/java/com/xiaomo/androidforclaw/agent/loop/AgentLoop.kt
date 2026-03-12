@@ -56,7 +56,7 @@ class AgentLoop(
     companion object {
         private const val TAG = "AgentLoop"
         private const val MAX_OVERFLOW_RECOVERY_ATTEMPTS = 3  // Aligned with OpenClaw
-        private const val LLM_TIMEOUT_MS = 60_000L  // LLM single call timeout: 60 seconds
+        private const val LLM_TIMEOUT_MS = 180_000L  // LLM single call timeout: 180 seconds (free models can be slow)
         private const val MAX_CONSECUTIVE_ERRORS = 3  // Consecutive same error threshold: 3 times
     }
 
