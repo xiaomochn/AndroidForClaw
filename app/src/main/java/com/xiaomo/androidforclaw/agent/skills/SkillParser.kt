@@ -6,8 +6,8 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 
 /**
- * Skill Document Parser
- * Supports AgentSkills.io format
+ * Skill Document Parser — the single unified parser for SKILL.md files.
+ * Supports AgentSkills.io format with full metadata.openclaw field extraction.
  *
  * Format specification:
  * ---
@@ -25,10 +25,11 @@ object SkillParser {
      * Parse Skill document
      *
      * @param content Full content of SKILL.md file
+     * @param filePath Optional file path for diagnostics
      * @return SkillDocument
      * @throws IllegalArgumentException If format is incorrect
      */
-    fun parse(content: String): SkillDocument {
+    fun parse(content: String, filePath: String = ""): SkillDocument {
         try {
             // 1. Split frontmatter and body
             val (frontmatter, body) = splitFrontmatter(content)
@@ -53,27 +54,35 @@ object SkillParser {
                 name = name,
                 description = description,
                 metadata = metadata,
-                content = body
+                content = body,
+                filePath = filePath
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse skill document", e)
+            Log.e(TAG, "Failed to parse skill document: $filePath", e)
             throw IllegalArgumentException("Invalid skill format: ${e.message}", e)
         }
     }
 
     /**
+     * Validate Skill document format
+     *
+     * @return null on success, error message on failure
+     */
+    fun validate(content: String): String? {
+        return try {
+            parse(content)
+            null
+        } catch (e: Exception) {
+            e.message
+        }
+    }
+
+    // ==================== Frontmatter Splitting ====================
+
+    /**
      * Split YAML frontmatter and Markdown body
-     *
-     * Input:
-     * ---
-     * name: test
-     * ---
-     * # Content
-     *
-     * Output: ("name: test", "# Content")
      */
     private fun splitFrontmatter(content: String): Pair<String, String> {
-        // Split using "---" delimiter regex
         val parts = content.split(Regex("^---\\s*$", RegexOption.MULTILINE))
 
         if (parts.size < 3) {
@@ -88,16 +97,19 @@ object SkillParser {
         return Pair(frontmatter, body)
     }
 
+    // ==================== YAML Field Extraction ====================
+
     /**
      * Extract YAML field value
      *
      * Supported formats:
      * 1. Single line: name: value
-     * 2. Multi-line JSON: metadata: { "key": "value" }
-     * 3. Multi-line JSON (spanning lines): metadata:
-     *                        {
-     *                          "key": "value"
-     *                        }
+     * 2. Single-line JSON: metadata: { "openclaw": { "always": true } }
+     * 3. Multi-line JSON (brace counting):
+     *    metadata:
+     *      {
+     *        "openclaw": { ... }
+     *      }
      */
     private fun extractYamlField(yaml: String, field: String): String {
         // Try to match single-line format: field: value
@@ -105,34 +117,20 @@ object SkillParser {
         val singleLineMatch = singleLineRegex.find(yaml)
         if (singleLineMatch != null) {
             val value = singleLineMatch.groupValues[1].trim()
-            Log.d(TAG, "extractYamlField('$field'): singleLineMatch found, value='$value'")
-            // If not empty and not JSON start, return the value
+            // If not empty and remaining text doesn't start with {, it's a simple value
             if (value.isNotEmpty() && !yaml.substring(singleLineMatch.range.last).trimStart().startsWith("{")) {
-                Log.d(TAG, "extractYamlField('$field'): simple value (not JSON), returning '$value'")
                 return value
             }
-            // If value is empty, it means the field value is on next line (JSON or multiline)
-            // Fall through to JSON extraction
         }
 
-        // Try to match multi-line JSON: field: { ... } or field:\n  { ... }
-        // Use brace counting to correctly extract nested JSON
+        // Try to match JSON value: field: { ... } or field:\n  { ... }
         val fieldRegex = Regex("$field:\\s*")
-        val fieldMatch = fieldRegex.find(yaml)
-        if (fieldMatch == null) {
-            Log.w(TAG, "extractYamlField('$field'): field pattern not found in JSON extraction")
-            return ""
-        }
+        val fieldMatch = fieldRegex.find(yaml) ?: return ""
 
         val jsonStart = yaml.indexOf('{', fieldMatch.range.last)
-        if (jsonStart == -1) {
-            Log.w(TAG, "extractYamlField('$field'): JSON start '{' not found after field")
-            return ""
-        }
+        if (jsonStart == -1) return ""
 
-        Log.d(TAG, "extractYamlField('$field'): found JSON start at position $jsonStart")
-
-        // Start from {, count braces until matched
+        // Brace counting to correctly extract nested JSON
         var braceCount = 0
         var jsonEnd = jsonStart
         while (jsonEnd < yaml.length) {
@@ -141,37 +139,22 @@ object SkillParser {
                 '}' -> {
                     braceCount--
                     if (braceCount == 0) {
-                        // Found matching closing brace
                         val jsonStr = yaml.substring(jsonStart, jsonEnd + 1)
-                        // Remove newlines and extra spaces from JSON, keep compact format
-                        val compactJson = jsonStr.replace(Regex("\\s+"), " ").trim()
-                        Log.d(TAG, "extractYamlField('$field'): extracted JSON (length=${compactJson.length})")
-                        return compactJson
+                        return jsonStr.replace(Regex("\\s+"), " ").trim()
                     }
                 }
             }
             jsonEnd++
         }
 
-        Log.w(TAG, "extractYamlField('$field'): failed to find closing brace")
         return ""
     }
 
+    // ==================== Metadata Parsing ====================
+
     /**
-     * Parse metadata JSON
-     *
-     * Format:
-     * {
-     *   "openclaw": {
-     *     "always": true,
-     *     "emoji": "📱",
-     *     "requires": {
-     *       "bins": ["adb"],
-     *       "env": ["ANDROID_HOME"],
-     *       "config": ["api.key"]
-     *     }
-     *   }
-     * }
+     * Parse metadata JSON into SkillMetadata
+     * Extracts all metadata.openclaw fields aligned with OpenClaw.
      */
     private fun parseMetadata(json: String): SkillMetadata {
         if (json.isEmpty()) {
@@ -179,22 +162,22 @@ object SkillParser {
         }
 
         return try {
-            Log.d(TAG, "Parsing metadata JSON (length=${json.length}): $json")
             val jsonObj = gson.fromJson(json, JsonObject::class.java)
             val openclaw = jsonObj.getAsJsonObject("openclaw")
-
-            if (openclaw == null) {
-                Log.w(TAG, "metadata.openclaw not found, using defaults")
-                return SkillMetadata()
-            }
+                ?: return SkillMetadata()
 
             SkillMetadata(
                 always = openclaw.get("always")?.asBoolean ?: false,
+                skillKey = openclaw.get("skillKey")?.asString,
+                primaryEnv = openclaw.get("primaryEnv")?.asString,
                 emoji = openclaw.get("emoji")?.asString,
-                requires = parseRequires(openclaw)
+                homepage = openclaw.get("homepage")?.asString,
+                os = jsonArrayToStringList(openclaw.getAsJsonArray("os")),
+                requires = parseRequires(openclaw),
+                install = parseInstallSpecs(openclaw.getAsJsonArray("install"))
             )
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse metadata JSON (length=${json.length}): $json", e)
+            Log.w(TAG, "Failed to parse metadata JSON: $json", e)
             SkillMetadata()
         }
     }
@@ -207,9 +190,10 @@ object SkillParser {
 
         return try {
             SkillRequires(
-                bins = jsonArrayToList(requiresObj.getAsJsonArray("bins")),
-                env = jsonArrayToList(requiresObj.getAsJsonArray("env")),
-                config = jsonArrayToList(requiresObj.getAsJsonArray("config"))
+                bins = jsonArrayToStringList(requiresObj.getAsJsonArray("bins")),
+                anyBins = jsonArrayToStringList(requiresObj.getAsJsonArray("anyBins")),
+                env = jsonArrayToStringList(requiresObj.getAsJsonArray("env")),
+                config = jsonArrayToStringList(requiresObj.getAsJsonArray("config"))
             )
         } catch (e: Exception) {
             Log.w(TAG, "Failed to parse requires", e)
@@ -218,24 +202,56 @@ object SkillParser {
     }
 
     /**
-     * Convert JsonArray to List<String>
+     * Parse install specifications array
      */
-    private fun jsonArrayToList(array: JsonArray?): List<String> {
-        if (array == null) return emptyList()
-        return array.mapNotNull { it.asString }
+    private fun parseInstallSpecs(array: JsonArray?): List<SkillInstallSpec>? {
+        if (array == null || array.size() == 0) return null
+
+        return array.mapNotNull { element ->
+            try {
+                if (!element.isJsonObject) return@mapNotNull null
+                val obj = element.asJsonObject
+
+                val kindStr = obj.get("kind")?.asString ?: return@mapNotNull null
+                val kind = when (kindStr.lowercase()) {
+                    "brew" -> InstallKind.BREW
+                    "node" -> InstallKind.NODE
+                    "go" -> InstallKind.GO
+                    "uv" -> InstallKind.UV
+                    "download" -> InstallKind.DOWNLOAD
+                    "apk" -> InstallKind.APK
+                    else -> return@mapNotNull null
+                }
+
+                SkillInstallSpec(
+                    id = obj.get("id")?.asString,
+                    kind = kind,
+                    label = obj.get("label")?.asString,
+                    bins = jsonArrayToStringList(obj.getAsJsonArray("bins")),
+                    os = jsonArrayToStringList(obj.getAsJsonArray("os")),
+                    formula = obj.get("formula")?.asString,
+                    `package` = obj.get("package")?.asString,
+                    module = obj.get("module")?.asString,
+                    url = obj.get("url")?.asString,
+                    archive = obj.get("archive")?.asString,
+                    extract = obj.get("extract")?.asBoolean,
+                    stripComponents = obj.get("stripComponents")?.asInt,
+                    targetDir = obj.get("targetDir")?.asString
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to parse install spec", e)
+                null
+            }
+        }.takeIf { it.isNotEmpty() }
     }
 
+    // ==================== Utility ====================
+
     /**
-     * Validate Skill document format
-     *
-     * @return Validation result, returns null on success, error message on failure
+     * Convert JsonArray to List<String>, returns empty list for null
      */
-    fun validate(content: String): String? {
-        return try {
-            parse(content)
-            null  // Validation successful
-        } catch (e: Exception) {
-            e.message  // Return error message
-        }
+    private fun jsonArrayToStringList(array: JsonArray?): List<String> {
+        if (array == null) return emptyList()
+        return array.mapNotNull { it.asString }
     }
 }

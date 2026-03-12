@@ -48,7 +48,7 @@ class ChatCreateTool(config: FeishuConfig, client: FeishuClient) : FeishuToolBas
                 body["user_ids"] = userIds
             }
 
-            val result = client.post("/open-api/im/v1/chats", body)
+            val result = client.post("/open-apis/im/v1/chats", body)
 
             if (result.isFailure) {
                 return@withContext ToolResult.error(result.exceptionOrNull()?.message ?: "Failed")
@@ -99,7 +99,7 @@ class ChatInfoTool(config: FeishuConfig, client: FeishuClient) : FeishuToolBase(
         try {
             val chatId = args["chat_id"] as? String ?: return@withContext ToolResult.error("Missing chat_id")
 
-            val result = client.get("/open-api/im/v1/chats/$chatId")
+            val result = client.get("/open-apis/im/v1/chats/$chatId")
 
             if (result.isFailure) {
                 return@withContext ToolResult.error(result.exceptionOrNull()?.message ?: "Failed")
@@ -155,7 +155,7 @@ class ChatAddMemberTool(config: FeishuConfig, client: FeishuClient) : FeishuTool
 
             val body = mapOf("id_list" to userIds)
 
-            val result = client.post("/open-api/im/v1/chats/$chatId/members", body)
+            val result = client.post("/open-apis/im/v1/chats/$chatId/members", body)
 
             if (result.isFailure) {
                 return@withContext ToolResult.error(result.exceptionOrNull()?.message ?: "Failed")
@@ -205,7 +205,7 @@ class ChatRemoveMemberTool(config: FeishuConfig, client: FeishuClient) : FeishuT
 
             // DELETE 请求通常不带 body，使用 query params 或单独的 API
             // 这里简化处理，实际可能需要调整
-            val result = client.delete("/open-api/im/v1/chats/$chatId/members")
+            val result = client.delete("/open-apis/im/v1/chats/$chatId/members")
 
             if (result.isFailure) {
                 return@withContext ToolResult.error(result.exceptionOrNull()?.message ?: "Failed")

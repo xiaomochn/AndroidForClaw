@@ -721,6 +721,21 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
                     Log.i(TAG, "   现在可以接收飞书消息了")
                     Log.i(TAG, "========================================")
 
+                    // Register feishu tools into MainEntryNew's ToolRegistry
+                    // (so broadcast/gateway messages also get feishu tools)
+                    try {
+                        val mainToolRegistry = MainEntryNew.getToolRegistry()
+                        val ftr = feishuChannel?.getToolRegistry()
+                        if (mainToolRegistry != null && ftr != null) {
+                            val count = com.xiaomo.androidforclaw.agent.tools.registerFeishuTools(mainToolRegistry, ftr)
+                            Log.i(TAG, "🔧 已注册 $count 个飞书工具到 MainEntryNew ToolRegistry")
+                        } else {
+                            Log.w(TAG, "⚠️ MainEntryNew 未初始化，飞书工具将在首次消息处理时注册")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "飞书工具注册到 MainEntryNew 失败: ${e.message}")
+                    }
+
                     // Subscribe to event flow, handle received messages
                     scope.launch(Dispatchers.IO) {
                         feishuChannel?.eventFlow?.collect { event ->
@@ -1137,16 +1152,32 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
                     context = this@MyApplication,
                     taskDataManager = taskDataManager
                 )
+
+                // Register feishu tools into ToolRegistry (aligned with OpenClaw extension tools)
+                val fc = feishuChannel
+                if (fc != null) {
+                    try {
+                        val feishuToolRegistry = fc.getToolRegistry()
+                        if (feishuToolRegistry != null) {
+                            val feishuToolCount = com.xiaomo.androidforclaw.agent.tools.registerFeishuTools(toolRegistry, feishuToolRegistry)
+                            Log.i(TAG, "🔧 已注册 $feishuToolCount 个飞书工具到 ToolRegistry")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "飞书工具注册失败: ${e.message}")
+                    }
+                }
+
+                val configLoader = ConfigLoader(this@MyApplication)
                 val contextBuilder = ContextBuilder(
                     context = this@MyApplication,
                     toolRegistry = toolRegistry,
-                    androidToolRegistry = androidToolRegistry
+                    androidToolRegistry = androidToolRegistry,
+                    configLoader = configLoader
                 )
                 val llmProvider = com.xiaomo.androidforclaw.providers.UnifiedLLMProvider(this@MyApplication)
                 val contextManager = com.xiaomo.androidforclaw.agent.context.ContextManager(llmProvider)
 
                 // Load maxIterations from config
-                val configLoader = ConfigLoader(this@MyApplication)
                 val config = configLoader.loadOpenClawConfig()
                 val maxIterations = config.agent.maxIterations
 

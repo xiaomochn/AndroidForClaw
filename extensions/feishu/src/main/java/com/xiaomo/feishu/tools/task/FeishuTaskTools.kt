@@ -50,7 +50,7 @@ class TaskCreateTool(config: FeishuConfig, client: FeishuClient) : FeishuToolBas
                 body["collaborator_ids"] = collaborators
             }
 
-            val result = client.post("/open-api/task/v2/tasks", body)
+            val result = client.post("/open-apis/task/v2/tasks", body)
 
             if (result.isFailure) {
                 return@withContext ToolResult.error(result.exceptionOrNull()?.message ?: "Failed")
@@ -115,7 +115,7 @@ class TaskUpdateTool(config: FeishuConfig, client: FeishuClient) : FeishuToolBas
                 return@withContext ToolResult.error("No update fields provided")
             }
 
-            val result = client.patch("/open-api/task/v2/tasks/$taskId", body)
+            val result = client.patch("/open-apis/task/v2/tasks/$taskId", body)
 
             if (result.isFailure) {
                 return@withContext ToolResult.error(result.exceptionOrNull()?.message ?: "Failed")
@@ -166,7 +166,7 @@ class TaskListTool(config: FeishuConfig, client: FeishuClient) : FeishuToolBase(
                 params.add("completed=$completed")
             }
 
-            val path = "/open-api/task/v2/tasks?" + params.joinToString("&")
+            val path = "/open-apis/task/v2/tasks?" + params.joinToString("&")
             val result = client.get(path)
 
             if (result.isFailure) {
@@ -226,7 +226,7 @@ class TaskCompleteTool(config: FeishuConfig, client: FeishuClient) : FeishuToolB
                 "completed_at" to System.currentTimeMillis().toString()
             )
 
-            val result = client.patch("/open-api/task/v2/tasks/$taskId", body)
+            val result = client.patch("/open-apis/task/v2/tasks/$taskId", body)
 
             if (result.isFailure) {
                 return@withContext ToolResult.error(result.exceptionOrNull()?.message ?: "Failed")

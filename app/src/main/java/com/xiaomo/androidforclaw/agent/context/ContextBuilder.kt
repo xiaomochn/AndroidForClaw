@@ -7,6 +7,7 @@ import com.xiaomo.androidforclaw.agent.skills.SkillsLoader
 import com.xiaomo.androidforclaw.agent.tools.AndroidToolRegistry
 import com.xiaomo.androidforclaw.agent.tools.ToolRegistry
 import com.xiaomo.androidforclaw.channel.ChannelManager
+import com.xiaomo.androidforclaw.config.ConfigLoader
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -44,7 +45,8 @@ import java.util.Locale
 class ContextBuilder(
     private val context: Context,
     private val toolRegistry: ToolRegistry,
-    private val androidToolRegistry: AndroidToolRegistry
+    private val androidToolRegistry: AndroidToolRegistry,
+    private val configLoader: ConfigLoader? = null  // For reading model config
 ) {
     companion object {
         private const val TAG = "ContextBuilder"
@@ -60,6 +62,12 @@ class ContextBuilder(
             "BOOTSTRAP.md",     // New workspace initialization
             "MEMORY.md"         // Long-term memory
         )
+
+        // Bootstrap file budget (aligned with OpenClaw bootstrap-budget.ts)
+        private const val DEFAULT_BOOTSTRAP_MAX_CHARS = 20_000      // Per-file max chars
+        private const val DEFAULT_BOOTSTRAP_TOTAL_MAX_CHARS = 150_000  // Total max chars
+        private const val MIN_BOOTSTRAP_FILE_BUDGET_CHARS = 200     // Minimum budget per file
+        private const val BOOTSTRAP_TAIL_RATIO = 0.2                // Keep 20% tail when truncating
 
         // Prompt Mode (reference OpenClaw)
         enum class PromptMode {
@@ -575,23 +583,36 @@ ${if (taskInfo.isNotEmpty()) "## Current Task\n" + taskInfo.joinToString("\n") e
     }
 
     /**
-     * Load Bootstrap files (reference OpenClaw's _load_bootstrap_files)
-     * Priority: workspace > assets (bundled)
+     * Load Bootstrap files with budget control
+     * Aligned with OpenClaw's buildBootstrapContextFiles (bootstrap-budget.ts)
      *
-     * Aligned with OpenClaw:
-     * - Start with "# Project Context"
-     * - SOUL.md special handling (add persona hint)
-     * - Separate each file with "## filename"
+     * Priority: workspace > assets (bundled)
+     * Budget: per-file max + total max (prevents MEMORY.md from blowing context)
      */
     private fun loadBootstrapFiles(): String {
-        val loadedFiles = mutableListOf<Pair<String, String>>() // (filename, content)
+        // Read budget from config if available, otherwise use defaults
+        val config = try { configLoader?.loadOpenClawConfig() } catch (_: Exception) { null }
+        val perFileMaxChars = config?.agents?.defaults?.bootstrapMaxChars ?: DEFAULT_BOOTSTRAP_MAX_CHARS
+        val totalMaxChars = maxOf(perFileMaxChars, config?.agents?.defaults?.bootstrapTotalMaxChars ?: DEFAULT_BOOTSTRAP_TOTAL_MAX_CHARS)
+
+        var remainingTotalChars = totalMaxChars
+        val loadedFiles = mutableListOf<Triple<String, String, Boolean>>() // (filename, content, truncated)
         var hasSoulFile = false
 
         for (filename in BOOTSTRAP_FILES) {
+            if (remainingTotalChars <= 0) {
+                Log.w(TAG, "⚠️ Bootstrap total budget exhausted, skipping: $filename")
+                break
+            }
+            if (remainingTotalChars < MIN_BOOTSTRAP_FILE_BUDGET_CHARS) {
+                Log.w(TAG, "⚠️ Remaining bootstrap budget ($remainingTotalChars chars) < minimum ($MIN_BOOTSTRAP_FILE_BUDGET_CHARS), skipping: $filename")
+                break
+            }
+
             try {
                 // 1. First try loading from workspace (user-defined)
                 val workspaceFile = File(workspaceDir, filename)
-                val content = if (workspaceFile.exists()) {
+                val rawContent = if (workspaceFile.exists()) {
                     Log.d(TAG, "Loaded bootstrap from workspace: $filename")
                     workspaceFile.readText()
                 } else {
@@ -607,8 +628,18 @@ ${if (taskInfo.isNotEmpty()) "## Current Task\n" + taskInfo.joinToString("\n") e
                     }
                 }
 
-                if (content != null && content.isNotEmpty()) {
-                    loadedFiles.add(filename to content)
+                if (rawContent != null && rawContent.isNotEmpty()) {
+                    // Apply per-file budget (aligned with OpenClaw trimBootstrapContent)
+                    val fileMaxChars = maxOf(1, minOf(perFileMaxChars, remainingTotalChars))
+                    val (content, truncated) = trimBootstrapContent(rawContent, fileMaxChars)
+
+                    if (truncated) {
+                        Log.w(TAG, "⚠️ Bootstrap file truncated: $filename (${rawContent.length} → ${content.length} chars, max=$fileMaxChars)")
+                    }
+
+                    loadedFiles.add(Triple(filename, content, truncated))
+                    remainingTotalChars = maxOf(0, remainingTotalChars - content.length)
+
                     if (filename.equals("SOUL.md", ignoreCase = true)) {
                         hasSoulFile = true
                     }
@@ -634,8 +665,11 @@ ${if (taskInfo.isNotEmpty()) "## Current Task\n" + taskInfo.joinToString("\n") e
         parts.add("")
 
         // Each file starts with "## filename"
-        for ((filename, content) in loadedFiles) {
+        for ((filename, content, truncated) in loadedFiles) {
             parts.add("## $filename")
+            if (truncated) {
+                parts.add("⚠️ _This file was truncated to fit the context budget._")
+            }
             parts.add("")
             parts.add(content)
             parts.add("")
@@ -645,10 +679,47 @@ ${if (taskInfo.isNotEmpty()) "## Current Task\n" + taskInfo.joinToString("\n") e
     }
 
     /**
+     * Trim bootstrap content to fit budget
+     * Aligned with OpenClaw's trimBootstrapContent:
+     * - Keep head (80%) + tail (20%) when truncating
+     * - Insert truncation marker in the middle
+     *
+     * @return Pair(content, wasTruncated)
+     */
+    private fun trimBootstrapContent(content: String, maxChars: Int): Pair<String, Boolean> {
+        if (content.length <= maxChars) {
+            return content to false
+        }
+
+        val tailChars = (maxChars * BOOTSTRAP_TAIL_RATIO).toInt()
+        val headChars = maxChars - tailChars - 50  // Reserve space for truncation marker
+
+        if (headChars <= 0 || tailChars <= 0) {
+            return content.take(maxChars) to true
+        }
+
+        val head = content.take(headChars)
+        val tail = content.takeLast(tailChars)
+        val omitted = content.length - headChars - tailChars
+        val marker = "\n\n... ($omitted chars omitted) ...\n\n"
+
+        return (head + marker + tail) to true
+    }
+
+    /**
      * Build runtime information (detailed version, reference OpenClaw)
+     * Model name read from config — aligned with OpenClaw's dynamic runtime info
      */
     private fun buildRuntimeInfo(): String {
-        val model = "Claude Opus 4.6"
+        // Read model from config instead of hardcoding
+        val model = try {
+            val config = configLoader?.loadOpenClawConfig()
+            config?.resolveDefaultModel() ?: "unknown"
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to read model from config: ${e.message}")
+            "unknown"
+        }
+
         val host = android.os.Build.MODEL
         val os = "Android ${android.os.Build.VERSION.RELEASE}"
         val api = android.os.Build.VERSION.SDK_INT

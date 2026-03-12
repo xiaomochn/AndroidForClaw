@@ -304,7 +304,7 @@ class SkillsMethods(private val context: Context) {
                 addProperty("skillKey", skillKey)
                 add("config", JsonObject().apply {
                     addProperty("enabled", updatedConfig.enabled)
-                    updatedConfig.apiKey?.let { addProperty("apiKey", it) }
+                    updatedConfig.apiKey?.let { add("apiKey", com.google.gson.Gson().toJsonTree(it)) }
                     updatedConfig.env?.let { add("env", com.google.gson.Gson().toJsonTree(it)) }
                 })
             }

@@ -170,14 +170,14 @@ object ApiAdapter {
             json.put("system", systemMessage)
         }
 
-        // Add tools
+        // Add tools (use buildToolJson for proper JSON escaping)
         if (!tools.isNullOrEmpty()) {
             val anthropicTools = JSONArray()
             tools.forEach { tool ->
                 val toolJson = JSONObject()
                 toolJson.put("name", tool.function.name)
                 toolJson.put("description", tool.function.description)
-                toolJson.put("input_schema", JSONObject(tool.function.parameters.toString()))
+                toolJson.put("input_schema", buildParametersJson(tool.function.parameters))
                 anthropicTools.put(toolJson)
             }
             json.put("tools", anthropicTools)
@@ -293,11 +293,11 @@ object ApiAdapter {
 
         json.put("messages", openaiMessages)
 
-        // Add tools
+        // Add tools (use Gson for proper JSON escaping — fixes description with special chars)
         if (!tools.isNullOrEmpty()) {
             val openaiTools = JSONArray()
             tools.forEach { tool ->
-                openaiTools.put(JSONObject(tool.toString()))
+                openaiTools.put(buildToolJson(tool))
             }
             json.put("tools", openaiTools)
         }
@@ -447,6 +447,69 @@ object ApiAdapter {
     ): JSONObject {
         // GitHub Copilot uses OpenAI compatible format
         return buildOpenAIRequest(model, messages, tools, temperature, maxTokens, false)
+    }
+
+    /**
+     * Build tool JSON with proper escaping (fixes description with special chars like quotes)
+     * Replaces the broken tool.toString() → JSONObject approach
+     */
+    private fun buildToolJson(tool: NewToolDefinition): JSONObject {
+        val json = JSONObject()
+        json.put("type", tool.type)
+
+        val funcJson = JSONObject()
+        funcJson.put("name", tool.function.name)
+        funcJson.put("description", tool.function.description)  // JSONObject.put handles escaping
+        funcJson.put("parameters", buildParametersJson(tool.function.parameters))
+
+        json.put("function", funcJson)
+        return json
+    }
+
+    /**
+     * Build parameters schema JSON with proper escaping
+     */
+    private fun buildParametersJson(params: com.xiaomo.androidforclaw.providers.llm.ParametersSchema): JSONObject {
+        val json = JSONObject()
+        json.put("type", params.type)
+
+        val propsJson = JSONObject()
+        params.properties.forEach { (key, prop) ->
+            val propJson = JSONObject()
+            propJson.put("type", prop.type)
+            propJson.put("description", prop.description)  // Properly escaped
+            prop.enum?.let { enumList ->
+                val enumArray = JSONArray()
+                enumList.forEach { enumArray.put(it) }
+                propJson.put("enum", enumArray)
+            }
+            prop.items?.let { items ->
+                val itemsJson = JSONObject()
+                itemsJson.put("type", items.type)
+                itemsJson.put("description", items.description)
+                propJson.put("items", itemsJson)
+            }
+            prop.properties?.let { nested ->
+                val nestedJson = JSONObject()
+                nested.forEach { (nk, nv) ->
+                    val nvJson = JSONObject()
+                    nvJson.put("type", nv.type)
+                    nvJson.put("description", nv.description)
+                    nestedJson.put(nk, nvJson)
+                }
+                propJson.put("properties", nestedJson)
+            }
+            propsJson.put(key, propJson)
+        }
+        json.put("properties", propsJson)
+
+        if (params.required.isNotEmpty()) {
+            val reqArray = JSONArray()
+            params.required.forEach { reqArray.put(it) }
+            json.put("required", reqArray)
+        }
+
+        return json
     }
 }
 

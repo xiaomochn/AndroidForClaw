@@ -166,17 +166,16 @@ class SkillInstaller(private val context: Context) {
                 )
             }
 
-            val parser = SkillFrontmatterParser()
-            val parseResult = parser.parse(skillMdFile.readText())
-            if (parseResult is SkillFrontmatterParser.ParseResult.Error) {
+            val skillDoc = try {
+                SkillParser.parse(skillMdFile.readText(), skillMdFile.absolutePath)
+            } catch (e: Exception) {
                 tempDir.deleteRecursively()
                 return@withContext Result.failure(
-                    Exception("Invalid SKILL.md: ${parseResult.message}")
+                    Exception("Invalid SKILL.md: ${e.message}")
                 )
             }
 
-            val skill = (parseResult as SkillFrontmatterParser.ParseResult.Success).frontmatter
-            val skillName = name ?: skill.name
+            val skillName = name ?: skillDoc.name
 
             // 3. Move to managed directory
             val targetDir = File(managedSkillsDir, skillName)

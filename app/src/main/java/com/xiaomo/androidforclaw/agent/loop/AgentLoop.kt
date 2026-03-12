@@ -4,6 +4,10 @@ import android.util.Log
 import com.xiaomo.androidforclaw.agent.context.ContextErrors
 import com.xiaomo.androidforclaw.agent.context.ContextManager
 import com.xiaomo.androidforclaw.agent.context.ContextRecoveryResult
+import com.xiaomo.androidforclaw.agent.context.ContextWindowGuard
+import com.xiaomo.androidforclaw.agent.context.ToolResultContextGuard
+import com.xiaomo.androidforclaw.agent.session.HistorySanitizer
+import com.xiaomo.androidforclaw.config.ConfigLoader
 import com.xiaomo.androidforclaw.agent.tools.AndroidToolRegistry
 import com.xiaomo.androidforclaw.agent.tools.SkillResult
 import com.xiaomo.androidforclaw.agent.tools.ToolRegistry
@@ -46,7 +50,8 @@ class AgentLoop(
     private val androidToolRegistry: AndroidToolRegistry,
     private val contextManager: ContextManager? = null,  // Optional context manager
     private val maxIterations: Int = 40,
-    private val modelRef: String? = null
+    private val modelRef: String? = null,
+    private val configLoader: ConfigLoader? = null  // For context window resolution (Gap 2)
 ) {
     companion object {
         private const val TAG = "AgentLoop"
@@ -56,6 +61,25 @@ class AgentLoop(
     }
 
     private val gson = Gson()
+
+    /**
+     * Resolve context window tokens from config (Gap 2).
+     * Uses ContextWindowGuard for proper resolution with warn/block thresholds.
+     */
+    private fun resolveContextWindowTokens(): Int {
+        if (configLoader == null) return ContextWindowGuard.DEFAULT_CONTEXT_WINDOW_TOKENS
+
+        // Parse provider/model from modelRef (format: "provider/model" or just "model")
+        val parts = modelRef?.split("/", limit = 2)
+        val providerName = if (parts != null && parts.size == 2) parts[0] else null
+        val modelId = if (parts != null && parts.size == 2) parts[1] else modelRef
+
+        val guard = ContextWindowGuard.resolveAndEvaluate(configLoader, providerName, modelId)
+        if (guard.shouldWarn) {
+            Log.w(TAG, "Context window below recommended: ${guard.tokens} tokens")
+        }
+        return guard.tokens
+    }
 
     // Log file configuration
     private val logDir = File("/sdcard/.androidforclaw/workspace/logs")
@@ -260,10 +284,15 @@ class AgentLoop(
         messages.add(systemMessage(systemPrompt))
         writeLog("✅ System prompt added (${systemPrompt.length} chars)")
 
-        // 2. Add conversation history
-        messages.addAll(contextHistory)
+        // 2. Add conversation history (sanitized — aligned with OpenClaw)
         if (contextHistory.isNotEmpty()) {
-            writeLog("✅ Context history added: ${contextHistory.size} messages")
+            val sanitized = HistorySanitizer.sanitize(contextHistory, maxTurns = 20)
+            messages.addAll(sanitized)
+            if (sanitized.size != contextHistory.size) {
+                writeLog("✅ Context history sanitized: ${contextHistory.size} → ${sanitized.size} messages")
+            } else {
+                writeLog("✅ Context history added: ${sanitized.size} messages")
+            }
         }
 
         // 3. Add user message
@@ -286,6 +315,10 @@ class AgentLoop(
                 writeLog("📢 发送迭代进度更新...")
                 _progressFlow.emit(ProgressUpdate.Iteration(iteration))
                 writeLog("✅ 迭代进度已发送")
+
+                // Apply Tool Result Context Guard before each LLM call (Gap 1)
+                val contextWindowTokens = resolveContextWindowTokens()
+                ToolResultContextGuard.enforceContextBudget(messages, contextWindowTokens)
 
                 writeLog("📤 调用 UnifiedLLMProvider.chatWithTools...")
                 writeLog("   Messages: ${messages.size}, Tools+Skills: ${allToolDefinitions.size}")

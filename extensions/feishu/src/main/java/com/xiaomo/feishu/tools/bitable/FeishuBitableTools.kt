@@ -45,7 +45,7 @@ class BitableCreateTool(config: FeishuConfig, client: FeishuClient) : FeishuTool
 
             val body = mapOf("fields" to fields)
 
-            val result = client.post("/open-api/bitable/v1/apps/$appToken/tables/$tableId/records", body)
+            val result = client.post("/open-apis/bitable/v1/apps/$appToken/tables/$tableId/records", body)
 
             if (result.isFailure) {
                 return@withContext ToolResult.error(result.exceptionOrNull()?.message ?: "Failed")
@@ -100,7 +100,7 @@ class BitableReadTool(config: FeishuConfig, client: FeishuClient) : FeishuToolBa
             val tableId = args["table_id"] as? String ?: return@withContext ToolResult.error("Missing table_id")
             val recordId = args["record_id"] as? String ?: return@withContext ToolResult.error("Missing record_id")
 
-            val result = client.get("/open-api/bitable/v1/apps/$appToken/tables/$tableId/records/$recordId")
+            val result = client.get("/open-apis/bitable/v1/apps/$appToken/tables/$tableId/records/$recordId")
 
             if (result.isFailure) {
                 return@withContext ToolResult.error(result.exceptionOrNull()?.message ?: "Failed")
@@ -157,7 +157,7 @@ class BitableUpdateTool(config: FeishuConfig, client: FeishuClient) : FeishuTool
 
             val body = mapOf("fields" to fields)
 
-            val result = client.put("/open-api/bitable/v1/apps/$appToken/tables/$tableId/records/$recordId", body)
+            val result = client.put("/open-apis/bitable/v1/apps/$appToken/tables/$tableId/records/$recordId", body)
 
             if (result.isFailure) {
                 return@withContext ToolResult.error(result.exceptionOrNull()?.message ?: "Failed")
@@ -204,7 +204,7 @@ class BitableDeleteTool(config: FeishuConfig, client: FeishuClient) : FeishuTool
             val tableId = args["table_id"] as? String ?: return@withContext ToolResult.error("Missing table_id")
             val recordId = args["record_id"] as? String ?: return@withContext ToolResult.error("Missing record_id")
 
-            val result = client.delete("/open-api/bitable/v1/apps/$appToken/tables/$tableId/records/$recordId")
+            val result = client.delete("/open-apis/bitable/v1/apps/$appToken/tables/$tableId/records/$recordId")
 
             if (result.isFailure) {
                 return@withContext ToolResult.error(result.exceptionOrNull()?.message ?: "Failed")
@@ -256,7 +256,7 @@ class BitableQueryTool(config: FeishuConfig, client: FeishuClient) : FeishuToolB
                 params["filter"] = filter
             }
 
-            val path = "/open-api/bitable/v1/apps/$appToken/tables/$tableId/records?" +
+            val path = "/open-apis/bitable/v1/apps/$appToken/tables/$tableId/records?" +
                     params.entries.joinToString("&") { "${it.key}=${it.value}" }
             val result = client.get(path)
 

@@ -60,6 +60,13 @@
       }
     }
   },
+  "skills": {
+    "allowBundled": null,
+    "extraDirs": [],
+    "watch": true,
+    "watchDebounceMs": 250,
+    "entries": {}
+  },
   "commands": {
     "native": "auto",
     "nativeSkills": "auto",

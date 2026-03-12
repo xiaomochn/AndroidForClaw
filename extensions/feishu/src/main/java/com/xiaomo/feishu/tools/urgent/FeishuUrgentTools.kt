@@ -43,7 +43,7 @@ class UrgentSendTool(config: FeishuConfig, client: FeishuClient) : FeishuToolBas
                 "user_id_list" to userIds
             )
 
-            val result = client.post("/open-api/im/v1/messages/$messageId/urgent_app", body)
+            val result = client.post("/open-apis/im/v1/messages/$messageId/urgent_app", body)
 
             if (result.isFailure) {
                 return@withContext ToolResult.error(result.exceptionOrNull()?.message ?: "Failed")
@@ -97,7 +97,7 @@ class UrgentAppTool(config: FeishuConfig, client: FeishuClient) : FeishuToolBase
                 "urgent_type" to urgentType
             )
 
-            val result = client.post("/open-api/im/v1/messages/$messageId/urgent_app", body)
+            val result = client.post("/open-apis/im/v1/messages/$messageId/urgent_app", body)
 
             if (result.isFailure) {
                 return@withContext ToolResult.error(result.exceptionOrNull()?.message ?: "Failed")
