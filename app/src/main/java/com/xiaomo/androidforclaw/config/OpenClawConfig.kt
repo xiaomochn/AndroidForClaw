@@ -30,6 +30,9 @@ data class OpenClawConfig(
     @SerializedName("skills")
     val skills: SkillsConfig = SkillsConfig(),
 
+    @SerializedName("plugins")
+    val plugins: PluginsConfig = PluginsConfig(),
+
     @SerializedName("tools")
     val tools: ToolsConfig = ToolsConfig(),
 
@@ -721,4 +724,26 @@ data class ModelSelectionConfig(
 
     @SerializedName("fallbacks")
     val fallbacks: List<String>? = null
+)
+
+/**
+ * Plugins configuration (aligns with OpenClaw plugins config)
+ *
+ * Plugins can ship their own skills by declaring skills directories.
+ * When a plugin is enabled, its skills participate in the normal loading order.
+ */
+data class PluginsConfig(
+    @SerializedName("entries")
+    val entries: Map<String, PluginEntry> = emptyMap()
+)
+
+/**
+ * Individual plugin entry (aligns with OpenClaw plugin.json + config)
+ */
+data class PluginEntry(
+    @SerializedName("enabled")
+    val enabled: Boolean = false,
+
+    @SerializedName("skills")
+    val skills: List<String> = emptyList()  // Relative skill directory paths within the plugin
 )

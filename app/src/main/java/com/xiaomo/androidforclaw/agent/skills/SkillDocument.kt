@@ -158,7 +158,8 @@ enum class SkillSource(val displayName: String) {
     BUNDLED("bundled"),      // assets/skills/
     MANAGED("managed"),      // /sdcard/.androidforclaw/skills/ (aligns with ~/.openclaw/skills/)
     WORKSPACE("workspace"),  // /sdcard/.androidforclaw/workspace/skills/ (aligns with ~/.openclaw/workspace/)
-    EXTRA("extra")           // extraDirs configuration (lowest priority)
+    EXTRA("extra"),          // extraDirs configuration (lowest priority)
+    PLUGIN("plugin")         // Plugin-provided skills (aligns with openclaw.plugin.json skills dirs)
 }
 
 /**

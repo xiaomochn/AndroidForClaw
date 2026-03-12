@@ -59,7 +59,26 @@ class SkillStatusBuilder(private val context: Context) {
             }
         }
 
-        // 4. Load workspace skills (highest priority)
+        // 4. Load plugin skills
+        for ((pluginName, pluginEntry) in config.plugins.entries) {
+            if (!pluginEntry.enabled) continue
+            val skillDirs = pluginEntry.skills.ifEmpty { listOf("skills") }
+            for (skillDir in skillDirs) {
+                val assetsPath = "extensions/$pluginName/$skillDir"
+                loadSkillsFromAssets(assetsPath, SkillSource.PLUGIN).forEach { doc ->
+                    skillEntries.add(buildStatusEntry(doc, config))
+                }
+                // Also check filesystem
+                val fsPath = File("/sdcard/.androidforclaw/extensions/$pluginName/$skillDir")
+                if (fsPath.exists() && fsPath.isDirectory) {
+                    loadSkillsFromDirectory(fsPath, SkillSource.PLUGIN).forEach { doc ->
+                        skillEntries.add(buildStatusEntry(doc, config))
+                    }
+                }
+            }
+        }
+
+        // 5. Load workspace skills (highest priority)
         val workspaceSkillsDir = File(workspacePath, "skills")
         if (workspaceSkillsDir.exists() && workspaceSkillsDir.isDirectory) {
             Log.d(TAG, "Loading workspace skills from ${workspaceSkillsDir.absolutePath}")

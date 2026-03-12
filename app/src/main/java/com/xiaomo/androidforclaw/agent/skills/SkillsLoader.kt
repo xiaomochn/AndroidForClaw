@@ -15,10 +15,12 @@ import java.io.File
  * 1. extraDirs (lowest) — skills.extraDirs config
  * 2. Bundled Skills — assets/skills/
  * 3. Managed Skills — /sdcard/.androidforclaw/skills/
- * 4. Workspace Skills (highest) — /sdcard/.androidforclaw/workspace/skills/
+ * 4. Plugin Skills — enabled plugin skill directories
+ * 5. Workspace Skills (highest) — /sdcard/.androidforclaw/workspace/skills/
  *
  * Features aligned with OpenClaw:
  * - extraDirs support (skills.extraDirs)
+ * - Plugin skills (plugins.entries.<name>.skills dirs)
  * - Environment injection (skills.entries.<key>.env / apiKey)
  * - Hot reload with debounce (skills.watch / skills.watchDebounceMs)
  * - Managed + Workspace directory monitoring
@@ -73,6 +75,7 @@ class SkillsLoader(private val context: Context) {
         val extraCount = loadExtraDirsSkills(skillsCache, config.skills.extraDirs)
         val bundledCount = loadBundledSkills(skillsCache)
         val managedCount = loadManagedSkills(skillsCache)
+        val pluginCount = loadPluginSkills(skillsCache, config)
         val workspaceCount = loadWorkspaceSkills(skillsCache)
 
         cacheValid = true
@@ -81,6 +84,7 @@ class SkillsLoader(private val context: Context) {
         Log.i(TAG, "  - extraDirs: $extraCount")
         Log.i(TAG, "  - Bundled: $bundledCount")
         Log.i(TAG, "  - Managed: $managedCount (覆盖)")
+        Log.i(TAG, "  - Plugin: $pluginCount (覆盖)")
         Log.i(TAG, "  - Workspace: $workspaceCount (覆盖)")
 
         return skillsCache.toMap()
@@ -414,6 +418,73 @@ class SkillsLoader(private val context: Context) {
             return 0
         }
         return loadSkillsFromDirectory(managedDir, SkillSource.MANAGED, skills)
+    }
+
+    /**
+     * Load plugin Skills from enabled plugins.
+     *
+     * Aligns with OpenClaw: plugins can ship skills by declaring `skills` dirs
+     * in openclaw.plugin.json. On Android, we read plugins.entries from config
+     * and scan each enabled plugin's skill directories.
+     *
+     * Plugin skill directories are resolved relative to the extensions base path
+     * (assets://extensions/<pluginName>/ for bundled, or filesystem for installed).
+     */
+    private fun loadPluginSkills(
+        skills: MutableMap<String, SkillDocument>,
+        config: com.xiaomo.androidforclaw.config.OpenClawConfig
+    ): Int {
+        var count = 0
+
+        for ((pluginName, pluginEntry) in config.plugins.entries) {
+            if (!pluginEntry.enabled) continue
+
+            // Determine skill dirs for this plugin
+            val skillDirs = pluginEntry.skills.ifEmpty { listOf("skills") }
+
+            for (skillDir in skillDirs) {
+                // Try bundled assets first (assets://extensions/<plugin>/<dir>/)
+                val assetsPath = "extensions/$pluginName/$skillDir"
+                try {
+                    val assetDirs = context.assets.list(assetsPath)
+                    if (assetDirs != null && assetDirs.isNotEmpty()) {
+                        for (dir in assetDirs) {
+                            val skillMdPath = "$assetsPath/$dir/$SKILL_FILE_NAME"
+                            try {
+                                val content = context.assets.open(skillMdPath)
+                                    .bufferedReader().use { it.readText() }
+                                val skill = SkillParser.parse(content, "assets://$skillMdPath")
+                                    .copy(source = SkillSource.PLUGIN, filePath = "assets://$skillMdPath")
+
+                                val isOverride = skills.containsKey(skill.name)
+                                skills[skill.name] = skill
+                                count++
+
+                                val action = if (isOverride) "覆盖" else "新增"
+                                Log.d(TAG, "✅ Plugin/$pluginName ($action): ${skill.name}")
+                            } catch (e: Exception) {
+                                // Not a valid skill dir, skip
+                            }
+                        }
+                        continue // Found in assets, don't check filesystem
+                    }
+                } catch (e: Exception) {
+                    // Not in assets, try filesystem
+                }
+
+                // Try filesystem (installed plugins)
+                val fsPath = File("/sdcard/.androidforclaw/extensions/$pluginName/$skillDir")
+                if (fsPath.exists() && fsPath.isDirectory) {
+                    count += loadSkillsFromDirectory(fsPath, SkillSource.PLUGIN, skills)
+                }
+            }
+        }
+
+        if (count > 0) {
+            Log.i(TAG, "Plugin Skills: $count 个加载完成")
+        }
+
+        return count
     }
 
     /**

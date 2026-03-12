@@ -126,7 +126,7 @@ class SkillsActivity : AppCompatActivity() {
         }
 
         // Check managed
-        val managedPath = "/sdcard/.androidforclaw/.skills/$skillName"
+        val managedPath = "/sdcard/.androidforclaw/skills/$skillName"
         if (File(managedPath).exists()) {
             return "managed" to managedPath
         }
