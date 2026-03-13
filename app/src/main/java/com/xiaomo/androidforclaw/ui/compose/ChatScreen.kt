@@ -161,32 +161,6 @@ fun ChatScreen(
                 }
             }
 
-            // Loading indicator
-            if (isLoading) {
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 8.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color.Black.copy(alpha = 0.7f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "AI 正在思考...",
-                            style = TextStyle(color = Color.White, fontSize = 13.sp)
-                        )
-                    }
-                }
-            }
         }
 
         // Divider

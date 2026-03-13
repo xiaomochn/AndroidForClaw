@@ -386,7 +386,12 @@ class SessionManager {
      */
     fun replaceCurrentSessionMessages(messages: List<ChatMessage>) {
         val current = _currentSession.value
-        val updatedSession = current.copy(messages = messages)
+
+        // Merge with current local messages and dedupe by semantic identity
+        val merged = (current.messages + messages)
+            .distinctBy { Triple(it.isUser, it.status, it.content.trim()) }
+
+        val updatedSession = current.copy(messages = merged)
 
         // Update session list
         _sessions.value = _sessions.value.map {

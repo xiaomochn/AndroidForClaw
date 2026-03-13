@@ -73,6 +73,12 @@ class FeishuChannelFlowUITest {
         edits[0].text = "cli_a410f5bdf3f8d062"
         edits[1].text = "P5BBBqI49VfYj5R4QZoD3g1wFEAQzLZZ"
 
+        // 显式打开启用开关（若当前为关闭）
+        val enableSwitch = device.findObject(By.clazz("android.widget.Switch"))
+            ?: device.findObject(By.clazz("androidx.compose.ui.platform.ComposeView"))
+        enableSwitch?.click()
+        device.waitForIdle()
+
         // 点击保存
         val saveBtn = device.findObject(By.text("保存"))
         assertNotNull(saveBtn)
