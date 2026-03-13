@@ -58,10 +58,10 @@ class FirstInstallChatE2ETest {
     }
 
     @Test
-    fun firstInstall_sendMessage_replyContentIsSuccessCriterion() {
+    fun firstInstall_startButton_sendMessage_replyContentIsSuccessCriterion() {
         launchMainActivity()
 
-        completeFirstInstallIfShown()
+        completeFirstInstallIfShown(useSkip = false)
         waitForChatInput()
         sendMessage(TEST_PROMPT)
 
@@ -69,6 +69,22 @@ class FirstInstallChatE2ETest {
 
         assertTrue(
             "Assistant reply should contain success marker. Actual: $assistantReply",
+            assistantReply.contains("ANDROIDFORCLAW_TEST_OK", ignoreCase = true)
+        )
+    }
+
+    @Test
+    fun firstInstall_skipButton_sendMessage_replyContentIsSuccessCriterion() {
+        launchMainActivity()
+
+        completeFirstInstallIfShown(useSkip = true)
+        waitForChatInput()
+        sendMessage(TEST_PROMPT)
+
+        val assistantReply = waitForAssistantReplyOrError()
+
+        assertTrue(
+            "Assistant reply should contain success marker after skip flow. Actual: $assistantReply",
             assistantReply.contains("ANDROIDFORCLAW_TEST_OK", ignoreCase = true)
         )
     }
@@ -96,12 +112,13 @@ class FirstInstallChatE2ETest {
         device.waitForIdle()
     }
 
-    private fun completeFirstInstallIfShown() {
+    private fun completeFirstInstallIfShown(useSkip: Boolean) {
         val welcome = device.wait(Until.findObject(By.text("欢迎使用 AndroidForClaw")), 5000)
         if (welcome != null) {
-            val startButton = device.wait(Until.findObject(By.text("开始使用")), 5000)
-            assertNotNull("First-install start button should exist", startButton)
-            startButton!!.click()
+            val buttonText = if (useSkip) "跳过" else "开始使用"
+            val button = device.wait(Until.findObject(By.text(buttonText)), 5000)
+            assertNotNull("First-install $buttonText button should exist", button)
+            button!!.click()
             device.waitForIdle()
         }
     }
