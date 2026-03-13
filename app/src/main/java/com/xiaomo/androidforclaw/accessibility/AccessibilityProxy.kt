@@ -62,7 +62,7 @@ object AccessibilityProxy {
     fun bindService(context: Context): Boolean {
         val intent = Intent().apply {
             component = ComponentName(
-                "com.xiaomo.androidforclaw.accessibility",
+                "com.xiaomo.androidforclaw",
                 "com.xiaomo.androidforclaw.accessibility.service.AccessibilityBinderService"
             )
             action = "com.xiaomo.androidforclaw.ACCESSIBILITY_BIND"
