@@ -195,7 +195,10 @@ class ContextBuilder(
         // 12. Workspace Files (injected) - Mark Bootstrap injection
         parts.add("<!-- Workspace files injected above -->")
 
-        // 13. Reply Tags - Skip (handled by gateway layer)
+        // 13. Reply Tags (aligned with OpenClaw)
+        if (promptMode == PromptMode.FULL) {
+            parts.add(buildReplyTagsSection())
+        }
 
         // 14. Messaging (aligned with OpenClaw) - FULL mode (OpenClaw skips in minimal)
         if (promptMode == PromptMode.FULL) {
@@ -586,14 +589,15 @@ This is a single-user Android device. All requests come from the device owner.
      * 9. Current Date & Time Section
      */
     private fun buildTimeSection(): String {
+        // Aligned with OpenClaw: "## Current Date & Time" + "Time zone: xxx"
         val timezone = java.util.TimeZone.getDefault().id
-        val currentTime = SimpleDateFormat("yyyy-MM-dd HH:mm (EEEE)", Locale.getDefault())
-            .format(Date())
+        val sdf = SimpleDateFormat("EEEE, MMMM d, yyyy — h:mm a (z)", Locale.getDefault())
+        sdf.timeZone = java.util.TimeZone.getDefault()
+        val formattedTime = sdf.format(Date())
         return """
-# Current Date & Time
-
-Timezone: $timezone
-Current Time: $currentTime
+## Current Date & Time
+Time zone: $timezone
+$formattedTime
         """.trimIndent()
     }
 
@@ -634,20 +638,42 @@ $extraSystemPrompt
     /**
      * 18. Reasoning Format Section
      */
-    private fun buildReasoningFormatSection(): String {
+    /**
+     * 13. Reply Tags (aligned with OpenClaw)
+     */
+    private fun buildReplyTagsSection(): String {
         return """
-## Reasoning Format
-
-ALL internal reasoning MUST be inside <think>...</think>.
-Do not output any analysis outside <think>.
-Format every reply as <think>...</think> then <final>...</final>, with no other text.
-Only the final user-visible reply may appear inside <final>.
-Only text inside <final> is shown to the user; everything else is discarded and never seen by the user.
-
-Example:
-<think>Short internal reasoning.</think>
-<final>Hey there! What would you like to do next?</final>
+## Reply Tags
+To request a native reply/quote on supported surfaces, include one tag in your reply:
+- Reply tags must be the very first token in the message (no leading text/newlines): [[reply_to_current]] your reply.
+- [[reply_to_current]] replies to the triggering message.
+- Prefer [[reply_to_current]]. Use [[reply_to:<id>]] only when an id was explicitly provided (e.g. by the user or a tool).
+Whitespace inside the tag is allowed (e.g. [[ reply_to_current ]] / [[ reply_to: 123 ]]).
+Tags are stripped before sending; support depends on the current channel config.
         """.trimIndent()
+    }
+
+    private fun buildReasoningFormatSection(): String {
+        // Aligned with OpenClaw: provider-specific reasoning hint
+        // OpenClaw uses isReasoningTagProvider() to decide if <think> tags are needed
+        // For OpenRouter/custom providers that use reasoning tags:
+        val model = try {
+            configLoader?.loadOpenClawConfig()?.resolveDefaultModel() ?: ""
+        } catch (_: Exception) { "" }
+        val provider = model.substringBefore("/", "")
+
+        // OpenClaw: only add reasoning tag hint for providers that need it
+        val needsReasoningTags = provider in listOf("openrouter", "deepseek", "fireworks", "together")
+
+        return if (needsReasoningTags) {
+            """
+## Reasoning Format
+When the model returns <think>…</think> blocks, these contain internal reasoning and are automatically stripped before display. You may use them freely for step-by-step thinking.
+            """.trimIndent()
+        } else {
+            // For native reasoning providers (Anthropic, OpenAI), no special format needed
+            ""
+        }
     }
 
     /**

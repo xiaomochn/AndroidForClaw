@@ -55,7 +55,7 @@ class MessageCompactor(
         private const val MAX_EXTRACTED_IDENTIFIERS = 12
 
         // Timeout (Gap 8)
-        const val DEFAULT_COMPACTION_TIMEOUT_MS = 120_000L  // 2 minutes
+        const val DEFAULT_COMPACTION_TIMEOUT_MS = 300_000L  // Aligned with OpenClaw EMBEDDED_COMPACTION_TIMEOUT_MS  // 2 minutes
 
         // Required sections (aligned with OpenClaw)
         val REQUIRED_SUMMARY_SECTIONS = listOf(

@@ -35,6 +35,8 @@ object ToolResultContextGuard {
     // Aligned with OpenClaw tool-result-context-guard.ts
     const val CONTEXT_INPUT_HEADROOM_RATIO = 0.75
     const val SINGLE_TOOL_RESULT_CONTEXT_SHARE = 0.5
+    const val MAX_TOOL_RESULT_CONTEXT_SHARE = 0.3  // OpenClaw: max share of context for ALL tool results
+    const val HARD_MAX_TOOL_RESULT_CHARS = 400_000  // OpenClaw: absolute max per single tool result
 
     const val CONTEXT_LIMIT_TRUNCATION_NOTICE = "[truncated: output exceeded context limit]"
     const val PREEMPTIVE_COMPACTION_PLACEHOLDER = "[compacted: tool output removed to free context]"
@@ -63,7 +65,18 @@ object ToolResultContextGuard {
 
         Log.d(TAG, "Context budget: $contextBudgetChars chars, single tool max: $maxSingleToolResultChars chars")
 
-        // Step 1: Truncate individual oversized tool results
+        // Step 0: Hard max — truncate any tool result exceeding absolute limit (OpenClaw HARD_MAX_TOOL_RESULT_CHARS)
+        for (i in messages.indices) {
+            val msg = messages[i]
+            if (!isToolResultMessage(msg)) continue
+            val contentStr = msg.content ?: continue
+            if (contentStr.length > HARD_MAX_TOOL_RESULT_CHARS) {
+                messages[i] = msg.copy(content = truncateTextToBudget(contentStr, HARD_MAX_TOOL_RESULT_CHARS))
+                Log.d(TAG, "Hard-max truncated tool result ${msg.name ?: msg.toolCallId}: ${contentStr.length} -> $HARD_MAX_TOOL_RESULT_CHARS chars")
+            }
+        }
+
+        // Step 1: Truncate individual oversized tool results (relative to context share)
         for (i in messages.indices) {
             val msg = messages[i]
             if (!isToolResultMessage(msg)) continue

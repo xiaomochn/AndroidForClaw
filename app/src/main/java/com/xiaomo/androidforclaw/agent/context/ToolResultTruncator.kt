@@ -19,7 +19,7 @@ object ToolResultTruncator {
     private const val TAG = "ToolResultTruncator"
 
     // Configuration parameters
-    private const val MAX_TOOL_RESULT_CHARS = 4000  // Max characters for a single tool result
+    private const val MAX_TOOL_RESULT_CHARS = 8000  // Aligned with OpenClaw TOOL_RESULT_MAX_CHARS  // Max characters for a single tool result
     private const val HEAD_CHARS = 1500  // Keep head characters count
     private const val TAIL_CHARS = 1500  // Keep tail characters count
     private const val PLACEHOLDER = "\n\n... [truncated] ...\n\n"
