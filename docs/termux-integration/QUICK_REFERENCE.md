@@ -47,7 +47,7 @@ termux-setup-storage
 
 ### Execute Python
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: "print('Hello World')"
 })
@@ -55,7 +55,7 @@ termux_exec({
 
 ### Execute Node.js
 ```javascript
-termux_exec({
+exec({
     runtime: "nodejs",
     code: "console.log('Hello World')"
 })
@@ -63,7 +63,7 @@ termux_exec({
 
 ### Execute Shell
 ```javascript
-termux_exec({
+exec({
     runtime: "shell",
     code: "ls -lh /sdcard/Download"
 })
@@ -71,7 +71,7 @@ termux_exec({
 
 ### Access Android Files
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import os
@@ -83,7 +83,7 @@ print(f"Found {len(files)} files")
 
 ### Install Package
 ```javascript
-termux_exec({
+exec({
     runtime: "shell",
     code: "pip3 install numpy"
 })
@@ -112,7 +112,7 @@ After `termux-setup-storage`, Termux can access:
 
 ### Web Scraping
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import requests
@@ -127,7 +127,7 @@ print(soup.title.string)
 
 ### Data Processing
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import pandas as pd
@@ -140,7 +140,7 @@ print(df.describe())
 
 ### Image Processing
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: `
 from PIL import Image
@@ -155,7 +155,7 @@ print(f"Resized to {img.size}")
 
 ### File Management
 ```javascript
-termux_exec({
+exec({
     runtime: "shell",
     code: "find /sdcard/Download -name '*.pdf' -type f"
 })

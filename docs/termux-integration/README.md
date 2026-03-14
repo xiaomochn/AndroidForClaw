@@ -142,7 +142,7 @@ chmod +x ~/.termux/boot/start-bridge.sh
 
 Agent 会调用:
 ```javascript
-termux_exec({
+exec({
     action: "setup_storage"
 })
 ```
@@ -167,7 +167,7 @@ termux-setup-storage
 
 Agent 会调用:
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: "print('Hello from Termux!')"
 })
@@ -182,7 +182,7 @@ termux_exec({
 
 Agent 会调用:
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import os
@@ -199,7 +199,7 @@ for f in files[:10]:
 
 **访问相机照片**:
 ```python
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import os
@@ -224,7 +224,7 @@ if photos:
 
 **处理下载文件**:
 ```python
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import os
@@ -249,7 +249,7 @@ for ext, count in sorted(extensions.items()):
 
 **数据处理**:
 ```python
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import pandas as pd
@@ -269,7 +269,7 @@ print(f"\nAverage: {df['score'].mean():.1f}")
 
 **网络请求**:
 ```python
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import requests
@@ -286,7 +286,7 @@ print(f"🍴 Forks: {data['forks_count']}")
 
 **文件处理**:
 ```javascript
-termux_exec({
+exec({
     runtime: "nodejs",
     code: `
 const fs = require('fs');
@@ -309,7 +309,7 @@ files.slice(0, 10).forEach(f => {
 
 **系统信息**:
 ```bash
-termux_exec({
+exec({
     runtime: "shell",
     code: `
 echo "=== CPU Info ==="
@@ -370,7 +370,7 @@ pip3 install requests beautifulsoup4 pandas numpy
 **解决**:
 - 增加 timeout 参数:
   ```javascript
-  termux_exec({
+  exec({
       runtime: "python",
       code: "...",
       timeout: 300  // 5 分钟
@@ -463,7 +463,7 @@ pkg upgrade
 ### 自定义工作目录
 
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: "print(__file__)",
     cwd: "/sdcard/MyProject"
@@ -489,7 +489,7 @@ api_key = os.environ.get('MY_API_KEY')
 使用后台任务:
 ```javascript
 // 1. 启动后台任务
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import time
@@ -504,7 +504,7 @@ with open('/sdcard/task.log', 'w') as f:
 })
 
 // 2. 轮询检查进度
-termux_exec({
+exec({
     runtime: "shell",
     code: "tail -1 /sdcard/task.log"
 })

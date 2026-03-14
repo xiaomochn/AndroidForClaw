@@ -25,9 +25,9 @@ Execute Python, Node.js, and Shell scripts locally on the Android device using T
 
 ## Available Tool
 
-### termux_exec
+### exec
 
-Execute code in Termux environment or manage Termux settings.
+Run commands through the unified exec entry. When Termux is available, exec is routed to Termux; otherwise it falls back to internal Android exec.
 
 **Parameters**:
 - `action` (optional): Action type - "exec" (default) or "setup_storage"
@@ -48,7 +48,7 @@ Execute code in Termux environment or manage Termux settings.
 Before accessing `/sdcard/` files, setup storage permissions:
 
 ```javascript
-termux_exec({
+exec({
     action: "setup_storage"
 })
 ```
@@ -65,7 +65,7 @@ This will:
 **After setup, you can access files**:
 
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import os
@@ -82,7 +82,7 @@ files = os.listdir('~/storage/downloads')
 ### Python
 
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import sys
@@ -94,7 +94,7 @@ print("Hello from Termux!")
 
 **Web scraping**:
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import requests
@@ -109,7 +109,7 @@ print(soup.title.string)
 
 **Data processing**:
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import pandas as pd
@@ -129,7 +129,7 @@ print(df.to_string())
 ### Node.js
 
 ```javascript
-termux_exec({
+exec({
     runtime: "nodejs",
     code: `
 const os = require('os');
@@ -141,7 +141,7 @@ console.log('Node:', process.version);
 
 **File operations**:
 ```javascript
-termux_exec({
+exec({
     runtime: "nodejs",
     code: `
 const fs = require('fs');
@@ -157,7 +157,7 @@ files.slice(0, 5).forEach(f => console.log('-', f));
 ### Shell
 
 ```javascript
-termux_exec({
+exec({
     runtime: "shell",
     code: "ls -lh /sdcard/Download | head -10"
 })
@@ -165,7 +165,7 @@ termux_exec({
 
 **System info**:
 ```javascript
-termux_exec({
+exec({
     runtime: "shell",
     code: `
 echo "=== System Info ==="
@@ -186,7 +186,7 @@ df -h /sdcard
 
 ```javascript
 // First time setup - only need to do once
-termux_exec({
+exec({
     action: "setup_storage"
 })
 
@@ -198,7 +198,7 @@ termux_exec({
 
 ```javascript
 // Read a file from Downloads
-termux_exec({
+exec({
     runtime: "python",
     code: `
 # Method 1: Direct path
@@ -217,7 +217,7 @@ print(f"Read {len(data)} bytes")
 ### 3. Process images from Camera
 
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: `
 from PIL import Image
@@ -239,11 +239,11 @@ if photos:
 
 ### 4. Check if Termux is ready
 
-Before using termux_exec, check if the environment is ready:
+Before using exec, check if the environment is ready:
 
 ```javascript
-// Use termux_exec with a simple ping
-const result = termux_exec({
+// Use exec with a simple ping
+const result = exec({
     runtime: "python",
     code: "print('ready')"
 })
@@ -256,13 +256,13 @@ const result = termux_exec({
 
 ```javascript
 // Install Python package
-termux_exec({
+exec({
     runtime: "shell",
     code: "pip3 install requests beautifulsoup4"
 })
 
 // Install Node.js package
-termux_exec({
+exec({
     runtime: "shell",
     code: "npm install -g axios cheerio"
 })
@@ -272,7 +272,7 @@ termux_exec({
 
 ```javascript
 // Step 1: Download data
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import requests
@@ -283,7 +283,7 @@ with open('/sdcard/data.json', 'w') as f:
 })
 
 // Step 2: Process data
-termux_exec({
+exec({
     runtime: "python",
     code: `
 import json
@@ -298,7 +298,7 @@ print(f"Processed {len(data)} items")
 ### 7. Error handling
 
 ```javascript
-const result = termux_exec({
+const result = exec({
     runtime: "python",
     code: "import nonexistent_module"
 })
@@ -306,7 +306,7 @@ const result = termux_exec({
 // Check result
 if (result.includes("Error:") || result.includes("ModuleNotFoundError")) {
     // Handle error - maybe install missing package
-    termux_exec({
+    exec({
         runtime: "shell",
         code: "pip3 install <missing-package>"
     })
@@ -384,7 +384,7 @@ npm install -g <package>
 
 Increase timeout for long-running tasks:
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: "...",
     timeout: 300  // 5 minutes
@@ -462,7 +462,7 @@ nohup python3 ~/.termux/phoneforclaw_server.py > ~/.termux/server.log 2>&1 &
 
 In AndroidForClaw, test with:
 ```javascript
-termux_exec({
+exec({
     runtime: "python",
     code: "print('Hello from Termux!')"
 })
@@ -472,7 +472,7 @@ Should output: `Hello from Termux!`
 
 ## Comparison with Other Tools
 
-| Feature | termux_exec | javascript_exec | exec |
+| Feature | exec (termux-backed) | javascript_exec | exec (internal fallback) |
 |---------|-------------|-----------------|------|
 | Python | ✅ Full Python 3 | ❌ | ❌ |
 | Node.js | ✅ Full Node.js | ❌ | ❌ |
@@ -482,7 +482,7 @@ Should output: `Hello from Termux!`
 | Performance | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | Setup | Requires Termux | Built-in | Built-in |
 
-**Use termux_exec when**:
+**Use exec when Termux is available:**
 - Need Python/Node.js ecosystem
 - Complex data processing
 - Web scraping
