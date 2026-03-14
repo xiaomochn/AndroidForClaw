@@ -470,18 +470,39 @@ fun PermissionsCard(onClick: () -> Unit) {
         withContext(Dispatchers.IO) {
             try {
                 overlay = Settings.canDrawOverlays(context)
+
+                // Step 1: Check system settings — is our accessibility service enabled?
+                val systemEnabled = try {
+                    val accessibilityOn = Settings.Secure.getInt(
+                        context.contentResolver,
+                        Settings.Secure.ACCESSIBILITY_ENABLED, 0
+                    ) == 1
+                    if (!accessibilityOn) false
+                    else {
+                        val services = Settings.Secure.getString(
+                            context.contentResolver,
+                            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                        ) ?: ""
+                        services.contains("com.xiaomo.androidforclaw")
+                    }
+                } catch (e: Exception) { false }
+
+                // Step 2: Try AIDL connection for full readiness
                 val proxy = com.xiaomo.androidforclaw.accessibility.AccessibilityProxy
                 val isConnected = proxy.isConnected.value ?: false
-                if (!isConnected && !isConnecting) {
+                if (!isConnected && systemEnabled && !isConnecting) {
                     isConnecting = true
                     proxy.bindService(context)
-                    delay(300)
+                    delay(500)
                     isConnecting = false
                 }
-                val ready = (proxy.isConnected.value == true) && proxy.isServiceReadyAsync()
-                accessibility = ready
-                screenCapture = if (ready) proxy.isMediaProjectionGranted() else false
-                Log.d("PermissionsCard", "Permission status: accessibility=$accessibility, overlay=$overlay, screenCapture=$screenCapture")
+                val aidlReady = (proxy.isConnected.value == true) && proxy.isServiceReadyAsync()
+
+                // Show as enabled if system settings say it's on (even if AIDL not connected yet)
+                accessibility = systemEnabled || aidlReady
+                screenCapture = if (aidlReady) proxy.isMediaProjectionGranted() else false
+
+                Log.d("PermissionsCard", "Permission status: accessibility=$accessibility (system=$systemEnabled, aidl=$aidlReady), overlay=$overlay, screenCapture=$screenCapture")
             } catch (e: Exception) {
                 Log.e("PermissionsCard", "Error checking permissions", e)
             }
