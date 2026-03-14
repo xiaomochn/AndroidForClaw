@@ -89,7 +89,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             MainEntryNew.uiProgressFlow.collect { event ->
                 val rendered = when (event.type) {
                     "iteration" -> ""
-                    "thinking" -> "正在思考..."
+                    "thinking" -> ""  // Skip: sendMessage() already adds thinking indicator
                     "tool_call" -> "${event.title}\n${event.content}"
                     "tool_result" -> "${event.title}\n${event.content}"
                     "block_reply" -> event.content
