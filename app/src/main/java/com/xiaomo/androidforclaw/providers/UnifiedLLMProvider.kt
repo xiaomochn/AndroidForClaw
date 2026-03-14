@@ -193,11 +193,13 @@ class UnifiedLLMProvider(private val context: Context) {
                 }
             }
 
+            val finalRequestBody = normalizeOpenAiTokenField(model, requestBody)
+
             // Send request
             val request = Request.Builder()
                 .url(apiUrl)
                 .headers(headers)
-                .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
+                .post(finalRequestBody.toString().toRequestBody("application/json".toMediaType()))
                 .build()
 
             val response = httpClient.newCall(request).execute()
@@ -241,6 +243,24 @@ class UnifiedLLMProvider(private val context: Context) {
             Log.e(TAG, "❌ LLM request failed", e)
             throw LLMException("LLM request failed: ${e.message}", e)
         }
+    }
+
+    private fun normalizeOpenAiTokenField(model: ModelDefinition, requestBody: JSONObject): JSONObject {
+        val modelIdLower = model.id.lowercase()
+        val requiresMaxCompletionTokens = modelIdLower.startsWith("gpt-5") ||
+            modelIdLower.startsWith("o1") ||
+            modelIdLower.startsWith("o3") ||
+            modelIdLower.startsWith("gpt-4.1")
+
+        if (!requiresMaxCompletionTokens) return requestBody
+        if (requestBody.has("max_tokens")) {
+            val value = requestBody.get("max_tokens")
+            requestBody.remove("max_tokens")
+            if (!requestBody.has("max_completion_tokens")) {
+                requestBody.put("max_completion_tokens", value)
+            }
+        }
+        return requestBody
     }
 
     /**
