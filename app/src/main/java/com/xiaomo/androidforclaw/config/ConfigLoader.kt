@@ -246,6 +246,25 @@ class ConfigLoader(private val context: Context) {
             )
         }
 
+        val modelId = json.optString("id", "")
+        val modelIdLower = modelId.lowercase()
+        val compatWithDefaults = if (compat?.maxTokensField == null) {
+            val defaultMaxTokensField = when {
+                modelIdLower.startsWith("gpt-5") -> "max_completion_tokens"
+                modelIdLower.startsWith("o1") -> "max_completion_tokens"
+                modelIdLower.startsWith("o3") -> "max_completion_tokens"
+                modelIdLower.startsWith("gpt-4.1") -> "max_completion_tokens"
+                else -> null
+            }
+            if (defaultMaxTokensField != null) {
+                (compat ?: ModelCompatConfig()).copy(maxTokensField = defaultMaxTokensField)
+            } else {
+                compat
+            }
+        } else {
+            compat
+        }
+
         return ModelDefinition(
             id = json.optString("id", ""),
             name = json.optString("name", ""),
@@ -256,7 +275,7 @@ class ConfigLoader(private val context: Context) {
             contextWindow = json.optInt("contextWindow", 128000),
             maxTokens = json.optInt("maxTokens", 8192),
             headers = headers,
-            compat = compat
+            compat = compatWithDefaults
         )
     }
 
