@@ -128,7 +128,7 @@ class DeviceTool(private val context: Context) : Tool {
             proxy.bindService(context)
             delay(500)
             if (proxy.isConnected.value != true) {
-                return ToolResult.error("Accessibility service not connected. Please enable it in Settings.")
+                return ToolResult.error("无障碍服务未开启。请到 设置 → 无障碍 → AndroidForClaw 开启无障碍权限，才能获取屏幕元素。")
             }
         }
 
@@ -136,11 +136,11 @@ class DeviceTool(private val context: Context) : Tool {
             proxy.dumpViewTree(useCache = false)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to dump view tree", e)
-            return ToolResult.error("Failed to get UI tree: ${e.message}")
+            return ToolResult.error("获取 UI 树失败: ${e.message}。请检查无障碍服务是否正常运行。")
         }
 
         if (viewNodes.isEmpty()) {
-            return ToolResult.error("No UI elements found on screen")
+            return ToolResult.error("当前页面没有可识别的 UI 元素。可能原因：页面正在加载、当前界面不暴露无障碍节点。建议等待 1-2 秒后重试。")
         }
 
         val nodes = SnapshotBuilder.buildFromViewNodes(viewNodes)
