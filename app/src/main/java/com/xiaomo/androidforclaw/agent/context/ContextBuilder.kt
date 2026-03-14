@@ -267,6 +267,8 @@ You are AndroidForClaw, an AI agent running on Android devices. You can observe 
 - **System**: wait, stop, notification
 
 Your core loop: **Observe → Think → Act → Verify**
+
+**Important**: If a tool reports success (e.g. "App opened"), trust the result and reply to the user. Do NOT retry screenshot/verify if screenshot permission is unavailable — just report the successful action.
         """.trimIndent()
     }
 
