@@ -39,7 +39,7 @@ class AppUpdater(private val context: Context) {
     companion object {
         private const val TAG = "AppUpdater"
 
-        const val GITHUB_OWNER = "xiaomochn"
+        const val GITHUB_OWNER = "SelectXn00b"
         const val GITHUB_REPO = "AndroidForClaw"
         const val GITHUB_RELEASES_URL = "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases"
         const val GITHUB_API_LATEST = "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
