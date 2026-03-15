@@ -867,35 +867,37 @@ class AgentLoop(
     private fun aggressiveTrimMessages(messages: MutableList<Message>, budgetChars: Int) {
         val maxHistoryBudget = (budgetChars * 0.5).toInt() // OpenClaw: maxHistoryShare = 0.5
 
-        // Separate system messages from conversation
-        val systemMessages = messages.filter { it.role == "system" }
-        val conversationMessages = messages.filter { it.role != "system" }.toMutableList()
+        // Aligned with OpenClaw pruneHistoryForContextShare:
+        // Drop oldest messages (any role) until under budget.
+        // Keep: first system message + last 2 messages (user + assistant).
+        // History may contain system-role messages from prior session saves — drop those too.
+        val totalChars = ToolResultContextGuard.estimateContextChars(messages)
+        val roleCounts = messages.groupBy { it.role }.mapValues { it.value.size }
+        writeLog("📊 Pruning: total=${messages.size} chars=$totalChars budget=$maxHistoryBudget roles=$roleCounts")
+
+        if (totalChars <= maxHistoryBudget) return
+
+        // Keep first message (system prompt) and last 2 (current user + last response)
+        val keep = 3 // first + last 2
+        if (messages.size <= keep) return
 
         var iterations = 0
-        while (ToolResultContextGuard.estimateContextChars(messages) > maxHistoryBudget && conversationMessages.size > 2 && iterations < 10) {
-            // Drop oldest half of conversation (aligned with OpenClaw splitMessagesByTokenShare)
-            val dropCount = (conversationMessages.size / 2).coerceAtLeast(1)
-            val toDrop = dropCount.coerceAtMost(conversationMessages.size - 2) // Keep at least last 2
+        while (ToolResultContextGuard.estimateContextChars(messages) > maxHistoryBudget && messages.size > keep && iterations < 15) {
+            // Drop oldest half between index 1 and size-2
+            val droppableCount = messages.size - keep
+            val dropCount = (droppableCount / 2).coerceAtLeast(1)
 
-            writeLog("🗑️ Pruning history: dropping $toDrop of ${conversationMessages.size} messages (iteration ${iterations + 1})")
+            writeLog("🗑️ Pruning: dropping $dropCount of $droppableCount droppable messages (iteration ${iterations + 1})")
 
-            repeat(toDrop) {
-                if (conversationMessages.size > 2) {
-                    conversationMessages.removeAt(0)
+            repeat(dropCount) {
+                if (messages.size > keep) {
+                    messages.removeAt(1) // Remove second message (oldest non-first)
                 }
             }
-
-            // Rebuild messages list
-            messages.clear()
-            messages.addAll(systemMessages)
-            messages.addAll(conversationMessages)
-
             iterations++
         }
 
-        if (iterations > 0) {
-            writeLog("✅ History pruned: ${messages.size} messages remaining after $iterations iterations")
-        }
+        writeLog("✅ Pruned: ${messages.size} messages, ${ToolResultContextGuard.estimateContextChars(messages)} chars after $iterations iterations")
     }
 
     /**
