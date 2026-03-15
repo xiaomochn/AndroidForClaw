@@ -40,6 +40,7 @@ import com.xiaomo.androidforclaw.util.MediaProjectionHelper
 import com.xiaomo.androidforclaw.ui.float.SessionFloatWindow
 import com.tencent.mmkv.MMKV
 import com.xiaomo.androidforclaw.util.MMKVKeys
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
@@ -184,6 +185,54 @@ class MainActivityCompose : ComponentActivity() {
         super.onResume()
         // Notify float window manager when main activity is visible
         SessionFloatWindow.setMainActivityVisible(true, this)
+        // Silent update check on every resume (cold + warm start)
+        silentUpdateCheck()
+    }
+
+    /**
+     * Check GitHub Releases for updates in background.
+     * Only shows dialog if a new version is available.
+     */
+    private fun silentUpdateCheck() {
+        lifecycleScope.launch {
+            try {
+                val updater = com.xiaomo.androidforclaw.updater.AppUpdater(this@MainActivityCompose)
+                val info = updater.checkForUpdate()
+                if (info.hasUpdate && info.downloadUrl != null) {
+                    // Show update dialog on main thread
+                    val sizeStr = if (info.fileSize > 0) "%.1f MB".format(info.fileSize / 1024.0 / 1024.0) else ""
+                    val message = buildString {
+                        append("发现新版本 v${info.latestVersion}\n")
+                        append("当前版本 v${info.currentVersion}\n")
+                        if (sizeStr.isNotEmpty()) append("大小: $sizeStr\n")
+                        if (!info.releaseNotes.isNullOrEmpty()) {
+                            append("\n${info.releaseNotes.take(200)}")
+                        }
+                    }
+
+                    androidx.appcompat.app.AlertDialog.Builder(this@MainActivityCompose)
+                        .setTitle("发现新版本")
+                        .setMessage(message)
+                        .setPositiveButton("立即更新") { _, _ ->
+                            lifecycleScope.launch {
+                                val success = updater.downloadAndInstall(info.downloadUrl, info.latestVersion)
+                                if (!success) {
+                                    try {
+                                        startActivity(android.content.Intent(
+                                            android.content.Intent.ACTION_VIEW,
+                                            android.net.Uri.parse(info.releaseUrl)
+                                        ))
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                        }
+                        .setNegativeButton("稍后再说", null)
+                        .show()
+                }
+            } catch (_: Exception) {
+                // Silent — don't interrupt user
+            }
+        }
     }
 
     override fun onPause() {
