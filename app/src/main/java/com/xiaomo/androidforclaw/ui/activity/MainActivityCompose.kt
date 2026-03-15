@@ -834,6 +834,12 @@ fun SettingsTab(
             }
         }
 
+        // 检查更新
+        CheckUpdateCard()
+
+        // 重启应用
+        RestartAppCard()
+
         // 悬浮窗开关
         FloatWindowSwitch()
 
@@ -879,6 +885,106 @@ fun FloatWindowSwitch() {
                     SessionFloatWindow.setEnabled(context, enabled)
                 }
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CheckUpdateCard() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val activity = context as? MainActivityCompose
+    val updater = remember { com.xiaomo.androidforclaw.updater.AppUpdater(context) }
+    val currentVersion = remember { updater.getCurrentVersion() }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = {
+            android.widget.Toast.makeText(context, "正在检查更新...", android.widget.Toast.LENGTH_SHORT).show()
+            activity?.lifecycleScope?.launch {
+                try {
+                    val info = updater.checkForUpdate()
+                    if (info.hasUpdate) {
+                        activity.silentUpdateCheck()
+                    } else {
+                        android.widget.Toast.makeText(context, "已是最新版本 v${info.currentVersion}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    android.widget.Toast.makeText(context, "检查更新失败: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = "检查更新"
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = "检查更新",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "当前版本 v$currentVersion",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RestartAppCard() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = {
+            androidx.appcompat.app.AlertDialog.Builder(context)
+                .setTitle("重启应用")
+                .setMessage("将关闭并重新启动应用，重新加载所有配置和服务。\n\n确定要重启吗？")
+                .setPositiveButton("重启") { _, _ ->
+                    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    }
+                    if (intent != null) context.startActivity(intent)
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        android.os.Process.killProcess(android.os.Process.myPid())
+                    }, 300)
+                }
+                .setNegativeButton("取消", null)
+                .show()
+        }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Build,
+                contentDescription = "重启应用"
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = "重启应用",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "重新加载配置和所有服务",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
