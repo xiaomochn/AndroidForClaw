@@ -1,14 +1,7 @@
 package com.xiaomo.androidforclaw.agent.tools.memory
 
-/**
- * OpenClaw Source Reference:
- * - ../openclaw/src/agents/tools/(all)
- *
- * AndroidForClaw adaptation: agent tool implementation.
- */
-
-
 import android.util.Log
+import com.xiaomo.androidforclaw.agent.memory.MemoryIndex
 import com.xiaomo.androidforclaw.agent.memory.MemoryManager
 import com.xiaomo.androidforclaw.agent.tools.Skill
 import com.xiaomo.androidforclaw.agent.tools.SkillResult
@@ -19,12 +12,10 @@ import com.xiaomo.androidforclaw.providers.ToolDefinition
 import java.io.File
 
 /**
- * memory_search tool
- * Aligned with OpenClaw memory-tool.ts
+ * memory_search tool — aligned with OpenClaw memory-tool.ts
  *
- * Search for relevant content in memory files
- * Current version: Keyword-based text search
- * TODO: Add vector embedding and semantic search in the future
+ * Hybrid search: SQLite FTS5 + vector embedding cosine similarity.
+ * Falls back to FTS5-only when no embedding provider is configured.
  */
 class MemorySearchSkill(
     private val memoryManager: MemoryManager,
@@ -32,12 +23,11 @@ class MemorySearchSkill(
 ) : Skill {
     companion object {
         private const val TAG = "MemorySearchSkill"
-        private const val DEFAULT_MAX_RESULTS = 6
-        private const val CONTEXT_LINES = 2  // Number of context lines
+        private const val SNIPPET_MAX_CHARS = 700
     }
 
     override val name = "memory_search"
-    override val description = "Search through memory files for relevant information. Returns matching text snippets with context."
+    override val description = "Search through memory files for relevant information using hybrid vector + keyword search. Returns matching text snippets with context."
 
     override fun getToolDefinition(): ToolDefinition {
         return ToolDefinition(
@@ -58,7 +48,7 @@ class MemorySearchSkill(
                         ),
                         "minScore" to PropertySchema(
                             type = "number",
-                            description = "Minimum match score threshold (optional)"
+                            description = "Minimum match score threshold (default: 0.35)"
                         )
                     ),
                     required = listOf("query")
@@ -71,35 +61,58 @@ class MemorySearchSkill(
         val query = args["query"] as? String
             ?: return SkillResult.error("Missing required parameter: query")
 
-        val maxResults = (args["maxResults"] as? Number)?.toInt() ?: DEFAULT_MAX_RESULTS
-        // minScore accepted but not yet used for keyword search (future: vector search threshold)
+        val maxResults = (args["maxResults"] as? Number)?.toInt() ?: MemoryIndex.DEFAULT_MAX_RESULTS
+        val minScore = (args["minScore"] as? Number)?.toFloat() ?: MemoryIndex.DEFAULT_MIN_SCORE
 
         return try {
-            val results = searchMemoryFiles(query, maxResults)
+            val memoryIndex = memoryManager.getMemoryIndex()
+            if (memoryIndex == null) {
+                return SkillResult.error("Memory index not initialized")
+            }
+
+            // Ensure index is up to date
+            memoryManager.syncIndex()
+
+            val results = memoryIndex.hybridSearch(query, maxResults, minScore)
 
             if (results.isEmpty()) {
                 return SkillResult.success(
                     content = "No matching memories found for query: \"$query\"",
                     metadata = mapOf(
                         "query" to query,
-                        "results_count" to 0
+                        "results_count" to 0,
+                        "mode" to getSearchMode()
                     )
                 )
             }
 
-            // Format results
+            // Format results — aligned with OpenClaw output
+            val workspaceDir = File(workspacePath)
             val formatted = results.mapIndexed { index, result ->
-                """
-                ## Result ${index + 1} (${result.file}, lines ${result.startLine}-${result.endLine})
-                ${result.snippet}
-                """.trimIndent()
+                val relativePath = try {
+                    File(result.path).relativeTo(workspaceDir).path
+                } catch (_: Exception) { result.path }
+                val snippet = if (result.text.length > SNIPPET_MAX_CHARS) {
+                    result.text.take(SNIPPET_MAX_CHARS) + "..."
+                } else result.text
+
+                """## Result ${index + 1} ($relativePath, lines ${result.startLine}-${result.endLine}, score: ${"%.2f".format(result.score)})
+$snippet"""
             }.joinToString("\n\n")
 
+            val embeddingProvider = memoryManager.getEmbeddingProvider()
             SkillResult.success(
                 content = formatted,
                 metadata = mapOf(
                     "query" to query,
-                    "results_count" to results.size
+                    "results_count" to results.size,
+                    "mode" to getSearchMode(),
+                    "provider" to (embeddingProvider?.providerName ?: "none"),
+                    "model" to (embeddingProvider?.modelName ?: "fts5-only"),
+                    "citations" to results.map { r ->
+                        val rp = try { File(r.path).relativeTo(File(workspacePath)).path } catch (_: Exception) { r.path }
+                        mapOf("file" to rp, "startLine" to r.startLine, "endLine" to r.endLine)
+                    }
                 )
             )
         } catch (e: Exception) {
@@ -108,87 +121,8 @@ class MemorySearchSkill(
         }
     }
 
-    /**
-     * Search result
-     */
-    private data class SearchResult(
-        val file: String,
-        val startLine: Int,
-        val endLine: Int,
-        val snippet: String,
-        val score: Double
-    )
-
-    /**
-     * Search memory files
-     */
-    private suspend fun searchMemoryFiles(query: String, maxResults: Int): List<SearchResult> {
-        val results = mutableListOf<SearchResult>()
-        val queryLower = query.lowercase()
-        val queryWords = queryLower.split(Regex("\\s+")).filter { it.length > 2 }
-
-        // Get all memory files
-        val memoryFiles = memoryManager.listMemoryFiles()
-
-        // Add today's and yesterday's logs
-        val workspaceDir = File(workspacePath)
-        val todayLog = File(workspaceDir, "memory/${java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())}.md")
-        if (todayLog.exists()) {
-            memoryFiles.toMutableList().add(todayLog.absolutePath)
-        }
-
-        // Search each file
-        for (filePath in memoryFiles) {
-            try {
-                val file = File(filePath)
-                if (!file.exists()) continue
-
-                val lines = file.readLines()
-                val relativePath = file.relativeTo(File(workspacePath)).path
-
-                // Search each line with its context
-                for (i in lines.indices) {
-                    val line = lines[i]
-                    val lineLower = line.lowercase()
-
-                    // Calculate match score
-                    var score = 0.0
-
-                    // Full query match
-                    if (lineLower.contains(queryLower)) {
-                        score += 10.0
-                    }
-
-                    // Word match
-                    for (word in queryWords) {
-                        if (lineLower.contains(word)) {
-                            score += 1.0
-                        }
-                    }
-
-                    // If there's a match, extract context
-                    if (score > 0) {
-                        val startLine = (i - CONTEXT_LINES).coerceAtLeast(0)
-                        val endLine = (i + CONTEXT_LINES + 1).coerceAtMost(lines.size)
-                        val snippet = lines.subList(startLine, endLine).joinToString("\n")
-
-                        results.add(
-                            SearchResult(
-                                file = relativePath,
-                                startLine = startLine + 1,
-                                endLine = endLine,
-                                snippet = snippet,
-                                score = score
-                            )
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to search file: $filePath", e)
-            }
-        }
-
-        // Sort by score and return top N results
-        return results.sortedByDescending { it.score }.take(maxResults)
+    private fun getSearchMode(): String {
+        val ep = memoryManager.getEmbeddingProvider()
+        return if (ep?.isAvailable == true) "hybrid" else "keyword"
     }
 }

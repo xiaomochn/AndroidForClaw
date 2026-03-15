@@ -141,9 +141,19 @@ object MainEntryNew {
             )
             Log.d(TAG, "✓ ToolRegistry initialized (${toolRegistry.getToolCount()} universal tools)")
 
-            // 3. Initialize MemoryManager (memory management)
+            // 3. Initialize MemoryManager (memory management + hybrid search index)
             val workspacePath = "/sdcard/.androidforclaw/workspace"
-            val memoryManager = com.xiaomo.androidforclaw.agent.memory.MemoryManager(workspacePath)
+            val openClawCfg = configLoader.loadOpenClawConfig()
+            val embeddingProviders = openClawCfg.resolveProviders()
+            // Try to find an OpenAI-compatible provider for embeddings
+            val embeddingBaseUrl = embeddingProviders.values.firstOrNull()?.baseUrl ?: ""
+            val embeddingApiKey = embeddingProviders.values.firstOrNull()?.apiKey ?: ""
+            val memoryManager = com.xiaomo.androidforclaw.agent.memory.MemoryManager(
+                workspacePath = workspacePath,
+                context = application,
+                embeddingBaseUrl = embeddingBaseUrl,
+                embeddingApiKey = embeddingApiKey
+            )
 
             // 4. Initialize AndroidToolRegistry (Android platform tools)
             androidToolRegistry = AndroidToolRegistry(
