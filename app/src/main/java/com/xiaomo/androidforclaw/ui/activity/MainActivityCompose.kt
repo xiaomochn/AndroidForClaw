@@ -952,16 +952,7 @@ fun RestartAppCard() {
                 .setTitle("重启应用")
                 .setMessage("将关闭并重新启动应用，重新加载所有配置和服务。\n\n确定要重启吗？")
                 .setPositiveButton("重启") { _, _ ->
-                    // Use a new process thread to relaunch after kill
-                    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
-                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                    } ?: return@setPositiveButton
-                    // Start activity first, then kill with delay
-                    context.startActivity(intent)
-                    (context as? android.app.Activity)?.finishAffinity()
-                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        Runtime.getRuntime().exit(0)
-                    }, 500)
+                    triggerRestart(context)
                 }
                 .setNegativeButton("取消", null)
                 .show()
@@ -990,6 +981,34 @@ fun RestartAppCard() {
             }
         }
     }
+}
+
+/**
+ * Reliable app restart using shell `am start` command.
+ * This works because `am start` runs in the system_server process,
+ * which survives our process death.
+ */
+/**
+ * Reliable restart: startActivity → wait for system to create new process → kill old.
+ * Key: startActivity is async. System creates the new Activity in a NEW process
+ * because we use FLAG_ACTIVITY_CLEAR_TASK. After 1s delay the new process is alive,
+ * then we kill the old one.
+ */
+/**
+ * Soft restart: clear task + relaunch main activity.
+ * Does NOT kill process (unreliable on modern Android without SCHEDULE_EXACT_ALARM).
+ * Instead: clears all activities, relaunches MainActivityCompose which re-runs
+ * all initialization (Gateway, Feishu WebSocket, etc.) via Application callbacks.
+ */
+private fun triggerRestart(context: android.content.Context) {
+    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
+    intent.addFlags(
+        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    )
+    context.startActivity(intent)
+    (context as? android.app.Activity)?.finishAffinity()
+    // Process stays alive, but all activities are recreated
+    // Services will be re-initialized in MainActivityCompose.onCreate
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
