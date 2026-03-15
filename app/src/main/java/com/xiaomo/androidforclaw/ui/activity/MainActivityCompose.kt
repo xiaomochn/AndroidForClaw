@@ -952,21 +952,16 @@ fun RestartAppCard() {
                 .setTitle("重启应用")
                 .setMessage("将关闭并重新启动应用，重新加载所有配置和服务。\n\n确定要重启吗？")
                 .setPositiveButton("重启") { _, _ ->
+                    // Use a new process thread to relaunch after kill
                     val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
                         addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                     } ?: return@setPositiveButton
-                    val pendingIntent = android.app.PendingIntent.getActivity(
-                        context, 0, intent,
-                        android.app.PendingIntent.FLAG_ONE_SHOT or android.app.PendingIntent.FLAG_IMMUTABLE
-                    )
-                    val alarmManager = context.getSystemService(android.content.Context.ALARM_SERVICE) as android.app.AlarmManager
-                    alarmManager.setExact(
-                        android.app.AlarmManager.RTC,
-                        System.currentTimeMillis() + 500,
-                        pendingIntent
-                    )
+                    // Start activity first, then kill with delay
+                    context.startActivity(intent)
                     (context as? android.app.Activity)?.finishAffinity()
-                    android.os.Process.killProcess(android.os.Process.myPid())
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        Runtime.getRuntime().exit(0)
+                    }, 500)
                 }
                 .setNegativeButton("取消", null)
                 .show()
