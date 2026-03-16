@@ -31,6 +31,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.xiaomo.androidforclaw.agent.tools.TermuxBridgeTool
 import com.xiaomo.androidforclaw.agent.tools.TermuxStatus
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +67,26 @@ fun TermuxSetupScreen(onBack: () -> Unit) {
     var statusMessage by remember { mutableStateOf("等待检测...") }
     var checking by remember { mutableStateOf(true) }
     var autoSettingUp by remember { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            // Permission granted, trigger auto-setup
+            scope.launch {
+                autoSettingUp = true
+                val status = withContext(Dispatchers.IO) { bridge.triggerAutoSetup() }
+                termuxInstalled = status.termuxInstalled
+                termuxApiInstalled = status.termuxApiInstalled
+                sshReachable = status.sshReachable
+                sshConfigured = status.sshConfigPresent
+                statusMessage = status.message
+                autoSettingUp = false
+            }
+        } else {
+            statusMessage = "RUN_COMMAND 权限被拒绝，请手动授权"
+        }
+    }
 
     // Generate setup command
     // Minimal command — only things that MUST run inside Termux
@@ -146,15 +169,20 @@ fun TermuxSetupScreen(onBack: () -> Unit) {
                     Spacer(Modifier.height(8.dp))
                     Button(
                         onClick = {
-                            scope.launch {
-                                autoSettingUp = true
-                                val status = withContext(Dispatchers.IO) { bridge.triggerAutoSetup() }
-                                termuxInstalled = status.termuxInstalled
-                                termuxApiInstalled = status.termuxApiInstalled
-                                sshReachable = status.sshReachable
-                                sshConfigured = status.sshConfigPresent
-                                statusMessage = status.message
-                                autoSettingUp = false
+                            // Check if we need runtime permission first
+                            if (bridge.needsRuntimePermissionRequest()) {
+                                permissionLauncher.launch("com.termux.permission.RUN_COMMAND")
+                            } else {
+                                scope.launch {
+                                    autoSettingUp = true
+                                    val status = withContext(Dispatchers.IO) { bridge.triggerAutoSetup() }
+                                    termuxInstalled = status.termuxInstalled
+                                    termuxApiInstalled = status.termuxApiInstalled
+                                    sshReachable = status.sshReachable
+                                    sshConfigured = status.sshConfigPresent
+                                    statusMessage = status.message
+                                    autoSettingUp = false
+                                }
                             }
                         },
                         enabled = termuxInstalled && !autoSettingUp && !(sshReachable && sshConfigured)
