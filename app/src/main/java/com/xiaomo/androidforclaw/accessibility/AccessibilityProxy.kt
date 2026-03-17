@@ -166,7 +166,7 @@ object AccessibilityProxy {
     }
 
     suspend fun tap(x: Int, y: Int): Boolean = withContext(Dispatchers.IO) {
-        ensureConnectedWithRetry()
+        ensureConnectedWithRetry(requireReady = true)
         try {
             service?.performTap(x, y) ?: false
         } catch (e: RemoteException) {
@@ -177,7 +177,7 @@ object AccessibilityProxy {
     }
 
     suspend fun longPress(x: Int, y: Int): Boolean = withContext(Dispatchers.IO) {
-        ensureConnectedWithRetry()
+        ensureConnectedWithRetry(requireReady = true)
         try {
             service?.performLongPress(x, y) ?: false
         } catch (e: RemoteException) {
@@ -373,34 +373,71 @@ object AccessibilityProxy {
     }
 
     /**
-     * 确保服务已连接，如果未连接则尝试重连（带重试）
+     * 确保服务已连接；可选地等待 AccessibilityService 真正 ready。
+     * 仅 binder 连上还不够，PhoneAccessibilityService 可能尚未完成初始化。
      */
-    private suspend fun ensureConnectedWithRetry() {
-        if (service != null) return
+    private suspend fun ensureConnectedWithRetry(requireReady: Boolean = false) {
+        if (service != null && (!requireReady || checkServiceReadyOnce())) return
 
-        Log.w(TAG, "Service not connected, attempting to bind...")
+        Log.w(TAG, "Service not connected/ready, attempting to bind... requireReady=$requireReady")
 
-        // 尝试重连3次
         repeat(3) { attempt ->
             bindService(context)
 
-            // 等待连接建立
-            withTimeoutOrNull(1000L) {
+            // 先等 binder 连接建立
+            val connected = withTimeoutOrNull(1000L) {
                 while (service == null) {
                     delay(100)
                 }
+                true
+            } == true
+
+            if (!connected) {
+                Log.w(TAG, "❌ Reconnect attempt ${attempt + 1} failed: binder not connected")
+                delay(500)
+                return@repeat
             }
 
-            if (service != null) {
+            if (!requireReady) {
                 Log.d(TAG, "✅ Service reconnected on attempt ${attempt + 1}")
                 return
             }
 
-            Log.w(TAG, "❌ Reconnect attempt ${attempt + 1} failed")
+            // 再等 service ready（observer 的 binder 也是这么处理时序问题的）
+            val ready = withTimeoutOrNull(2500L) {
+                while (!checkServiceReadyOnce()) {
+                    delay(100)
+                }
+                true
+            } == true
+
+            if (ready) {
+                Log.d(TAG, "✅ Service ready on attempt ${attempt + 1}")
+                return
+            }
+
+            Log.w(TAG, "❌ Reconnect attempt ${attempt + 1} failed: service not ready")
             delay(500)
         }
 
-        throw IllegalStateException("Accessibility service not connected after 3 retry attempts")
+        if (requireReady) {
+            throw IllegalStateException("Accessibility service not ready after 3 retry attempts")
+        } else {
+            throw IllegalStateException("Accessibility service not connected after 3 retry attempts")
+        }
+    }
+
+    private fun checkServiceReadyOnce(): Boolean {
+        return try {
+            service?.isServiceReady() == true
+        } catch (e: RemoteException) {
+            Log.e(TAG, "Failed to check service ready state", e)
+            _isConnected.postValue(false)
+            false
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to check service ready state", e)
+            false
+        }
     }
 
     fun getMediaProjectionStatus(): String {

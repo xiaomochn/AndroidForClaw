@@ -21,6 +21,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.widget.Toast
 import com.xiaomo.androidforclaw.accessibility.databinding.ActivityObserverPermissionsBinding
+import com.xiaomo.androidforclaw.accessibility.service.AccessibilityBinderService
 import kotlinx.coroutines.*
 import java.io.File
 
@@ -58,6 +59,15 @@ class PermissionActivity : Activity() {
     // Status check job
     private var statusCheckJob: Job? = null
 
+    private data class PermissionCheckSnapshot(
+        val settingsEnabled: Boolean,
+        val serviceInstancePresent: Boolean,
+        val rootPresent: Boolean,
+        val accessibilityEnabled: Boolean,
+        val mediaProjectionAuthorized: Boolean,
+        val storageGranted: Boolean
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate called")
@@ -73,13 +83,32 @@ class PermissionActivity : Activity() {
         setupViews()
 
         // 初始检查
-        checkPermissionsAsync()
+        checkPermissionsAsync("onCreate")
     }
 
     override fun onResume() {
         super.onResume()
+        Log.d(TAG, "lifecycle onResume")
+        // 立即刷新一次，覆盖从系统设置/悬浮按钮返回但没有 onActivityResult 的场景
+        checkPermissionsAsync("onResume")
         // 启动定期检查
         startStatusCheck()
+        // 某些 ROM 的无障碍设置写回有延迟，再补一轮延迟刷新
+        mainHandler.postDelayed({ checkPermissionsAsync("onResume-delayed-800ms") }, 800)
+    }
+
+    override fun onRestart() {
+        super.onRestart()
+        Log.d(TAG, "lifecycle onRestart")
+        checkPermissionsAsync("onRestart")
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        Log.d(TAG, "lifecycle onWindowFocusChanged hasFocus=$hasFocus")
+        if (hasFocus) {
+            checkPermissionsAsync("onWindowFocusChanged")
+        }
     }
 
     override fun onPause() {
@@ -132,33 +161,60 @@ class PermissionActivity : Activity() {
     /**
      * 异步检查权限状态
      */
-    private fun checkPermissionsAsync() {
+    private fun checkPermissionsAsync(reason: String = "unknown") {
         activityScope.launch {
             try {
+                Log.d(TAG, "checkPermissionsAsync start, reason=$reason")
+
                 // 在后台线程检查
-                val (accessibilityEnabled, mediaProjectionAuthorized, storageGranted) = withContext(Dispatchers.IO) {
-                    val accessibility = isAccessibilityServiceEnabled()
+                val result = withContext(Dispatchers.IO) {
+                    val settingsEnabled = isAccessibilityServiceEnabled()
+                    val serviceInstancePresent = AccessibilityBinderService.serviceInstance != null
+                    val rootPresent = AccessibilityBinderService.serviceInstance?.rootInActiveWindow != null
+                    val accessibility = resolveAccessibilityEnabled()
                     val mediaProjection = MediaProjectionHelper.isAuthorized()
                     val storage = isStoragePermissionGranted()
-                    Triple(accessibility, mediaProjection, storage)
+                    PermissionCheckSnapshot(
+                        settingsEnabled = settingsEnabled,
+                        serviceInstancePresent = serviceInstancePresent,
+                        rootPresent = rootPresent,
+                        accessibilityEnabled = accessibility,
+                        mediaProjectionAuthorized = mediaProjection,
+                        storageGranted = storage
+                    )
                 }
 
+                Log.d(
+                    TAG,
+                    "checkPermissionsAsync result, reason=$reason, " +
+                        "settingsEnabled=${result.settingsEnabled}, " +
+                        "serviceInstancePresent=${result.serviceInstancePresent}, " +
+                        "rootPresent=${result.rootPresent}, " +
+                        "accessibilityEnabled=${result.accessibilityEnabled}, " +
+                        "mediaProjectionAuthorized=${result.mediaProjectionAuthorized}, " +
+                        "storageGranted=${result.storageGranted}"
+                )
+
                 // 更新缓存
-                cachedAccessibilityEnabled = accessibilityEnabled
-                cachedMediaProjectionAuthorized = mediaProjectionAuthorized
-                cachedStorageGranted = storageGranted
+                cachedAccessibilityEnabled = result.accessibilityEnabled
+                cachedMediaProjectionAuthorized = result.mediaProjectionAuthorized
+                cachedStorageGranted = result.storageGranted
                 lastCheckTime = System.currentTimeMillis()
 
                 // 在主线程更新 UI
                 withContext(Dispatchers.Main) {
-                    updateAccessibilityUI(accessibilityEnabled)
-                    updateMediaProjectionUI(mediaProjectionAuthorized)
-                    updateStorageUI(storageGranted)
-                    updateAllPermissionsUI(accessibilityEnabled, mediaProjectionAuthorized, storageGranted)
+                    updateAccessibilityUI(result.accessibilityEnabled)
+                    updateMediaProjectionUI(result.mediaProjectionAuthorized)
+                    updateStorageUI(result.storageGranted)
+                    updateAllPermissionsUI(
+                        result.accessibilityEnabled,
+                        result.mediaProjectionAuthorized,
+                        result.storageGranted
+                    )
                 }
 
             } catch (e: Exception) {
-                Log.e(TAG, "Error checking permissions", e)
+                Log.e(TAG, "Error checking permissions, reason=$reason", e)
             }
         }
     }
@@ -185,7 +241,7 @@ class PermissionActivity : Activity() {
 
         statusCheckJob = activityScope.launch {
             while (isActive) {
-                checkPermissionsAsync()
+                checkPermissionsAsync("periodic")
                 delay(STATUS_CHECK_INTERVAL)
             }
         }
@@ -378,7 +434,7 @@ class PermissionActivity : Activity() {
 
             if (!needsPermission) {
                 Toast.makeText(this, "录屏权限已授予", Toast.LENGTH_SHORT).show()
-                checkPermissionsAsync()
+                checkPermissionsAsync("requestMediaProjectionPermission-alreadyGranted")
             } else {
                 Toast.makeText(this, "请在弹窗中点击\"立即开始\"", Toast.LENGTH_LONG).show()
             }
@@ -443,10 +499,18 @@ class PermissionActivity : Activity() {
     }
 
     /**
-     * 检查无障碍服务是否启用
+     * 读取系统设置里的无障碍开关状态。
+     * 注意：从“无权限 -> 有权限”时，系统设置通常比 service 真正连上更早完成，
+     * 所以最终 UI 判定不要只看这里。
      */
     private fun isAccessibilityServiceEnabled(): Boolean {
         return try {
+            val accessibilityEnabled = Settings.Secure.getInt(
+                contentResolver,
+                Settings.Secure.ACCESSIBILITY_ENABLED,
+                0
+            ) == 1
+
             val serviceShort = "${packageName}/.service.PhoneAccessibilityService"
             val serviceFull = "${packageName}/com.xiaomo.androidforclaw.accessibility.service.PhoneAccessibilityService"
             val enabledServices = Settings.Secure.getString(
@@ -454,13 +518,39 @@ class PermissionActivity : Activity() {
                 Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
             )
 
-            enabledServices?.let {
+            val serviceEnabled = enabledServices?.let {
                 it.contains(serviceShort) || it.contains(serviceFull)
             } ?: false
+
+            accessibilityEnabled && serviceEnabled
         } catch (e: Exception) {
             Log.e(TAG, "Error checking accessibility service", e)
             false
         }
+    }
+
+    /**
+     * 最终无障碍“已授权”状态判定：
+     * - 只判断系统设置已开 + serviceInstance 已建立
+     * - 不再依赖 rootInActiveWindow；那个更适合作为“当前是否可立即抓 UI”的运行态指标
+     */
+    private suspend fun resolveAccessibilityEnabled(): Boolean {
+        val settingsEnabled = isAccessibilityServiceEnabled()
+        if (!settingsEnabled) return false
+
+        repeat(8) { attempt ->
+            val serviceConnected = AccessibilityBinderService.serviceInstance != null
+            if (serviceConnected) {
+                if (attempt > 0) {
+                    Log.d(TAG, "Accessibility service connected after ${attempt + 1} checks")
+                }
+                return true
+            }
+            delay(250)
+        }
+
+        Log.w(TAG, "Accessibility settings enabled, but serviceInstance is still null")
+        return false
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -477,12 +567,12 @@ class PermissionActivity : Activity() {
                     Toast.makeText(this, "❌ 录屏权限被拒绝", Toast.LENGTH_SHORT).show()
                 }
 
-                mainHandler.postDelayed({ checkPermissionsAsync() }, 500)
+                mainHandler.postDelayed({ checkPermissionsAsync("onActivityResult-mediaProjection") }, 500)
             }
 
             REQUEST_CODE_ACCESSIBILITY -> {
                 Toast.makeText(this, "正在检查无障碍服务状态...", Toast.LENGTH_SHORT).show()
-                mainHandler.postDelayed({ checkPermissionsAsync() }, 1000)
+                mainHandler.postDelayed({ checkPermissionsAsync("onActivityResult-accessibility") }, 1000)
             }
 
             REQUEST_CODE_MANAGE_STORAGE -> {
@@ -492,7 +582,7 @@ class PermissionActivity : Activity() {
                 } else {
                     Toast.makeText(this, "❌ 存储权限被拒绝", Toast.LENGTH_SHORT).show()
                 }
-                mainHandler.postDelayed({ checkPermissionsAsync() }, 500)
+                mainHandler.postDelayed({ checkPermissionsAsync("onActivityResult-storage") }, 500)
             }
         }
     }
