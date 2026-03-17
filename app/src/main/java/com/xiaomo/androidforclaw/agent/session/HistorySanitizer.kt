@@ -47,8 +47,10 @@ object HistorySanitizer {
      * Strips `<|...|>` and full-width `<｜...｜>` variant delimiters that
      * GLM-5, DeepSeek, and other models may leak into assistant text.
      * See: OpenClaw #42173
+     *
+     * OpenClaw regex: /<[|｜][^|｜]*[|｜]>/g  (MODEL_SPECIAL_TOKEN_RE)
      */
-    private val CONTROL_TOKEN_RE = Regex("<[|｜][^>]{0,80}[|｜]>")
+    private val CONTROL_TOKEN_RE = Regex("<[|｜][^|｜]*[|｜]>")
 
     data class RepairReport(
         val added: Int = 0,
@@ -117,10 +119,14 @@ object HistorySanitizer {
     /**
      * Strip control tokens from a single text string.
      * Can be called directly for user-facing output sanitization.
+     *
+     * Aligned with OpenClaw stripModelSpecialTokens:
+     * Replace each match with a single space, then collapse runs of spaces.
      */
     fun stripControlTokensFromText(text: String): String {
         if (!text.contains('<')) return text  // fast path
-        return CONTROL_TOKEN_RE.replace(text, "").trim()
+        if (!CONTROL_TOKEN_RE.containsMatchIn(text)) return text
+        return CONTROL_TOKEN_RE.replace(text, " ").replace(Regex("  +"), " ").trim()
     }
 
     /**
