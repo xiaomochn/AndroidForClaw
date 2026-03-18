@@ -59,16 +59,6 @@ class ModelSetupActivity : AppCompatActivity() {
 
         // Provider presets
         private val PROVIDERS = mapOf(
-            "mimo" to ProviderPreset(
-                name = "小米 MiMo (免费)",
-                baseUrl = "https://api.xiaomimimo.com/v1",
-                api = "openai-completions",
-                hint = "小米 MiMo 大模型，免费使用。注册: xiaomimimo.com",
-                models = listOf(
-                    ModelPreset("mimo-claw-0301", "MiMo Claw 0301 (免费，128K)", reasoning = false, contextWindow = 128000, maxTokens = 16384)
-                ),
-                authHeader = true
-            ),
             "openrouter" to ProviderPreset(
                 name = "OpenRouter",
                 baseUrl = "https://openrouter.ai/api/v1",
@@ -97,6 +87,16 @@ class ModelSetupActivity : AppCompatActivity() {
                     ModelPreset("claude-haiku-3-5-20241022", "Claude 3.5 Haiku (快速)")
                 )
             ),
+            "mimo" to ProviderPreset(
+                name = "小米 MiMo (免费)",
+                baseUrl = "https://api.xiaomimimo.com/v1",
+                api = "openai-completions",
+                hint = "小米 MiMo 大模型，免费使用。注册: xiaomimimo.com",
+                models = listOf(
+                    ModelPreset("mimo-claw-0301", "MiMo Claw 0301 (免费，128K)", reasoning = false, contextWindow = 128000, maxTokens = 16384)
+                ),
+                authHeader = true
+            ),
             "openai" to ProviderPreset(
                 name = "OpenAI",
                 baseUrl = "https://api.openai.com/v1",
@@ -122,7 +122,7 @@ class ModelSetupActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityModelSetupBinding
     private val configLoader by lazy { ConfigLoader(this) }
-    private var selectedProvider = "mimo"
+    private var selectedProvider = "openrouter"
     private var advancedExpanded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -170,11 +170,11 @@ class ModelSetupActivity : AppCompatActivity() {
                 "⚙️ 使用其他服务商（Anthropic / OpenAI / 自定义）"
             }
 
-            // If collapsing, reset to MiMo
-            if (!advancedExpanded && selectedProvider != "mimo") {
-                selectedProvider = "mimo"
-                binding.chipMimo.isChecked = true
-                applyProviderPreset("mimo")
+            // If collapsing, reset to OpenRouter
+            if (!advancedExpanded && selectedProvider != "openrouter") {
+                selectedProvider = "openrouter"
+                binding.chipOpenrouter.isChecked = true
+                applyProviderPreset("openrouter")
             }
         }
     }
@@ -187,7 +187,7 @@ class ModelSetupActivity : AppCompatActivity() {
                 checkedIds.contains(R.id.chip_anthropic) -> "anthropic"
                 checkedIds.contains(R.id.chip_openai) -> "openai"
                 checkedIds.contains(R.id.chip_custom) -> "custom"
-                else -> "mimo"
+                else -> "openrouter"
             }
             selectedProvider = provider
             applyProviderPreset(provider)
@@ -258,9 +258,9 @@ class ModelSetupActivity : AppCompatActivity() {
     }
 
     private fun saveDefaultAndFinish() {
-        selectedProvider = "mimo"
+        selectedProvider = "openrouter"
         advancedExpanded = false
-        applyProviderPreset("mimo")
+        applyProviderPreset("openrouter")
         binding.etSetupApiKey.setText("")
         saveAndFinish()
     }
