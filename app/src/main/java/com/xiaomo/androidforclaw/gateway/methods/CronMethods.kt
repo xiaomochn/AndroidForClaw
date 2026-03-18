@@ -172,24 +172,82 @@ object CronMethods {
     private fun jobToJson(job: CronJob) = JSONObject().apply {
         put("id", job.id)
         put("name", job.name)
+        job.description?.let { put("description", it) }
         put("enabled", job.enabled)
+        job.deleteAfterRun?.let { put("deleteAfterRun", it) }
         put("schedule", scheduleToJson(job.schedule))
+        put("sessionTarget", when (job.sessionTarget) {
+            SessionTarget.MAIN -> "main"
+            SessionTarget.ISOLATED -> "isolated"
+        })
+        put("wakeMode", when (job.wakeMode) {
+            WakeMode.NOW -> "now"
+            WakeMode.NEXT_HEARTBEAT -> "next-heartbeat"
+        })
         put("payload", payloadToJson(job.payload))
+        job.delivery?.let { d ->
+            put("delivery", JSONObject().apply {
+                put("mode", when (d.mode) {
+                    DeliveryMode.NONE -> "none"
+                    DeliveryMode.ANNOUNCE -> "announce"
+                    DeliveryMode.WEBHOOK -> "webhook"
+                })
+                d.channel?.let { put("channel", it) }
+                d.to?.let { put("to", it) }
+            })
+        }
+        job.failureAlert?.let { fa ->
+            put("failureAlert", JSONObject().apply {
+                put("after", fa.after)
+                put("cooldownMs", fa.cooldownMs)
+                fa.channel?.let { put("channel", it) }
+            })
+        }
         put("createdAtMs", job.createdAtMs)
+        put("updatedAtMs", job.updatedAtMs)
         put("state", stateToJson(job.state))
     }
 
-    private fun jsonToJob(json: JSONObject) = CronJob(
-        id = "",
-        name = json.getString("name"),
-        schedule = jsonToSchedule(json.getJSONObject("schedule")),
-        sessionTarget = SessionTarget.ISOLATED,
-        wakeMode = WakeMode.NEXT_HEARTBEAT,
-        payload = jsonToPayload(json.getJSONObject("payload")),
-        enabled = json.optBoolean("enabled", true),
-        createdAtMs = System.currentTimeMillis(),
-        updatedAtMs = System.currentTimeMillis()
-    )
+    private fun jsonToJob(json: JSONObject): CronJob {
+        val now = System.currentTimeMillis()
+        return CronJob(
+            id = "",
+            name = json.getString("name"),
+            description = json.optString("description", "").ifEmpty { null },
+            schedule = jsonToSchedule(json.getJSONObject("schedule")),
+            sessionTarget = when (json.optString("sessionTarget", "isolated")) {
+                "main" -> SessionTarget.MAIN
+                else -> SessionTarget.ISOLATED
+            },
+            wakeMode = when (json.optString("wakeMode", "next-heartbeat")) {
+                "now" -> WakeMode.NOW
+                else -> WakeMode.NEXT_HEARTBEAT
+            },
+            payload = jsonToPayload(json.getJSONObject("payload")),
+            delivery = json.optJSONObject("delivery")?.let { d ->
+                CronDelivery(
+                    mode = when (d.optString("mode", "announce")) {
+                        "none" -> DeliveryMode.NONE
+                        "webhook" -> DeliveryMode.WEBHOOK
+                        else -> DeliveryMode.ANNOUNCE
+                    },
+                    channel = d.optString("channel", "").ifEmpty { null },
+                    to = d.optString("to", "").ifEmpty { null }
+                )
+            },
+            failureAlert = json.optJSONObject("failureAlert")?.let { fa ->
+                CronFailureAlert(
+                    after = fa.optInt("after", 2),
+                    cooldownMs = if (fa.has("cooldownMs")) fa.getLong("cooldownMs") else 3_600_000L,
+                    channel = fa.optString("channel", "").ifEmpty { null }
+                )
+            },
+            enabled = json.optBoolean("enabled", true),
+            deleteAfterRun = if (json.has("deleteAfterRun")) json.getBoolean("deleteAfterRun") else null,
+            createdAtMs = now,
+            updatedAtMs = now
+        )
+    }
 
     private fun scheduleToJson(s: CronSchedule) = JSONObject().apply {
         when (s) {
@@ -270,9 +328,15 @@ object CronMethods {
 
     private fun stateToJson(s: CronJobState) = JSONObject().apply {
         s.nextRunAtMs?.let { put("nextRunAtMs", it) }
+        s.runningAtMs?.let { put("runningAtMs", it) }
         s.lastRunAtMs?.let { put("lastRunAtMs", it) }
         s.lastRunStatus?.let { put("lastRunStatus", it.name.lowercase()) }
+        s.lastError?.let { put("lastError", it) }
+        s.lastDurationMs?.let { put("lastDurationMs", it) }
         put("consecutiveErrors", s.consecutiveErrors)
+        s.lastDelivered?.let { put("lastDelivered", it) }
+        s.lastDeliveryStatus?.let { put("lastDeliveryStatus", it.name.lowercase().replace('_', '-')) }
+        s.lastFailureAlertAtMs?.let { put("lastFailureAlertAtMs", it) }
     }
 
     /**

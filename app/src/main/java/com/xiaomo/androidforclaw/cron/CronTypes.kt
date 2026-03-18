@@ -75,6 +75,7 @@ data class CronFailureAlert(
 data class CronJob(
     val id: String,
     val name: String,
+    val description: String? = null,
     val schedule: CronSchedule,
     val sessionTarget: SessionTarget,
     val wakeMode: WakeMode,
@@ -82,6 +83,7 @@ data class CronJob(
     val delivery: CronDelivery? = null,
     val failureAlert: CronFailureAlert? = null,
     var enabled: Boolean,
+    val deleteAfterRun: Boolean? = null,
     val createdAtMs: Long,
     var updatedAtMs: Long,
     val state: CronJobState = CronJobState()
