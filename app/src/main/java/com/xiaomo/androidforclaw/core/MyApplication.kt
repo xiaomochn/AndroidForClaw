@@ -10,6 +10,7 @@ package com.xiaomo.androidforclaw.core
 
 
 import android.app.Activity
+import com.xiaomo.androidforclaw.util.ReasoningTagFilter
 import android.app.Application
 import android.content.Context
 import android.content.Intent
@@ -1459,116 +1460,11 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
     }
 
     /**
-     * Filter reasoning tags from LLM response
-     *
-     * Aligned with OpenClaw's stripReasoningTagsFromText implementation:
-     * - Remove internal reasoning tags (<think>, <thinking>, <thought>, <antthinking>, <final>)
-     * - Protect tags in code blocks (tags inside ``` and ` ` won't be removed)
-     * - Support case-insensitive matching
-     * - Support tags with attributes (e.g. <think id="test">)
-     *
-     * Reference: openclaw/src/shared/text/reasoning-tags.ts
+     * Filter reasoning tags from LLM response.
+     * Delegates to ReasoningTagFilter to avoid code duplication.
      */
-    private fun filterReasoningTags(content: String): String {
-        if (content.isEmpty()) return content
-
-        // Quick check: if no reasoning tags, return directly
-        val quickCheckPattern = """<\s*/?\s*(?:think(?:ing)?|thought|antthinking|final)\b""".toRegex(RegexOption.IGNORE_CASE)
-        if (!quickCheckPattern.containsMatchIn(content)) {
-            return content
-        }
-
-        // 1. Find all code regions (need protection)
-        val codeRegions = findCodeRegions(content)
-
-        // 2. Process <final> tag (only remove tag itself, keep content)
-        var cleaned = content
-        val finalTagPattern = """<\s*/?\s*final\b[^<>]*>""".toRegex(RegexOption.IGNORE_CASE)
-        val finalMatches = finalTagPattern.findAll(cleaned).toList().reversed()
-        for (match in finalMatches) {
-            val start = match.range.first
-            if (!isInsideCodeRegion(start, codeRegions)) {
-                cleaned = cleaned.removeRange(match.range)
-            }
-        }
-
-        // 3. Process reasoning tags (remove tags and their content)
-        val thinkingTagPattern = """<\s*(/?)\s*(?:think(?:ing)?|thought|antthinking)\b[^<>]*>""".toRegex(RegexOption.IGNORE_CASE)
-        val updatedCodeRegions = findCodeRegions(cleaned)
-
-        val result = StringBuilder()
-        var lastIndex = 0
-        var inThinking = false
-
-        for (match in thinkingTagPattern.findAll(cleaned)) {
-            val idx = match.range.first
-            val isClose = match.groupValues[1] == "/"
-
-            // Skip tags in code blocks
-            if (isInsideCodeRegion(idx, updatedCodeRegions)) {
-                continue
-            }
-
-            if (!inThinking) {
-                result.append(cleaned.substring(lastIndex, idx))
-                if (!isClose) {
-                    inThinking = true
-                }
-            } else if (isClose) {
-                inThinking = false
-            }
-
-            lastIndex = idx + match.value.length
-        }
-
-        // Add remaining content
-        if (!inThinking) {
-            result.append(cleaned.substring(lastIndex))
-        }
-
-        // 4. Clean up excessive blank lines and trim
-        return result.toString()
-            .trim()
-            .replace(Regex("""\n{3,}"""), "\n\n")
-    }
-
-    /**
-     * Find code regions in text (fence code blocks and inline code)
-     *
-     * Reference: openclaw/src/shared/text/code-regions.ts
-     */
-    private fun findCodeRegions(text: String): List<IntRange> {
-        val regions = mutableListOf<IntRange>()
-
-        // Match fenced code blocks (``` or ~~~)
-        val fencedPattern = """(^|\n)(```|~~~)[^\n]*\n[\s\S]*?(?:\n\2(?:\n|$)|$)""".toRegex()
-        for (match in fencedPattern.findAll(text)) {
-            val start = match.range.first + match.groupValues[1].length
-            val end = start + match.value.length - match.groupValues[1].length
-            regions.add(start until end)
-        }
-
-        // Match inline code (`...`)
-        val inlinePattern = """`+[^`]+`+""".toRegex()
-        for (match in inlinePattern.findAll(text)) {
-            val start = match.range.first
-            val end = match.range.last + 1
-            // Check if already inside fenced code block
-            val insideFenced = regions.any { start >= it.first && end <= it.last }
-            if (!insideFenced) {
-                regions.add(start until end)
-            }
-        }
-
-        return regions.sortedBy { it.first }
-    }
-
-    /**
-     * Check if position is inside code region
-     */
-    private fun isInsideCodeRegion(pos: Int, regions: List<IntRange>): Boolean {
-        return regions.any { pos in it }
-    }
+    private fun filterReasoningTags(content: String): String =
+        ReasoningTagFilter.stripReasoningTags(content)
 
     /**
      * Start Discord Channel (if configured)
