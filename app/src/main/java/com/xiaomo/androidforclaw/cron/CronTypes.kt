@@ -24,7 +24,14 @@ sealed class CronPayload {
         val message: String,
         val model: String? = null,
         val fallbacks: List<String>? = null,
-        val timeoutSeconds: Int? = null
+        val thinking: String? = null,
+        val timeoutSeconds: Int? = null,
+        val deliver: Boolean? = null,
+        val channel: String? = null,
+        val to: String? = null,
+        val bestEffortDeliver: Boolean? = null,
+        val lightContext: Boolean? = null,
+        val allowUnsafeExternalContent: Boolean? = null
     ) : CronPayload()
 }
 

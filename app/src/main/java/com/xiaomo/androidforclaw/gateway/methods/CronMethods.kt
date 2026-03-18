@@ -224,14 +224,38 @@ object CronMethods {
             is CronPayload.AgentTurn -> {
                 put("kind", "agentTurn")
                 put("message", p.message)
+                p.model?.let { put("model", it) }
+                p.fallbacks?.let { put("fallbacks", JSONArray(it)) }
+                p.thinking?.let { put("thinking", it) }
+                p.timeoutSeconds?.let { put("timeoutSeconds", it) }
+                p.deliver?.let { put("deliver", it) }
+                p.channel?.let { put("channel", it) }
+                p.to?.let { put("to", it) }
+                p.bestEffortDeliver?.let { put("bestEffortDeliver", it) }
+                p.lightContext?.let { put("lightContext", it) }
+                p.allowUnsafeExternalContent?.let { put("allowUnsafeExternalContent", it) }
             }
         }
     }
 
     private fun jsonToPayload(json: JSONObject): CronPayload = when (json.getString("kind")) {
         "systemEvent" -> CronPayload.SystemEvent(json.getString("text"))
-        "agentTurn" -> CronPayload.AgentTurn(json.getString("message"))
-        else -> throw IllegalArgumentException("Unknown payload")
+        "agentTurn" -> CronPayload.AgentTurn(
+            message = json.getString("message"),
+            model = json.optString("model", "").ifEmpty { null },
+            fallbacks = json.optJSONArray("fallbacks")?.let { arr ->
+                (0 until arr.length()).map { arr.getString(it) }
+            },
+            thinking = json.optString("thinking", "").ifEmpty { null },
+            timeoutSeconds = if (json.has("timeoutSeconds")) json.getInt("timeoutSeconds") else null,
+            deliver = if (json.has("deliver")) json.getBoolean("deliver") else null,
+            channel = json.optString("channel", "").ifEmpty { null },
+            to = json.optString("to", "").ifEmpty { null },
+            bestEffortDeliver = if (json.has("bestEffortDeliver")) json.getBoolean("bestEffortDeliver") else null,
+            lightContext = if (json.has("lightContext")) json.getBoolean("lightContext") else null,
+            allowUnsafeExternalContent = if (json.has("allowUnsafeExternalContent")) json.getBoolean("allowUnsafeExternalContent") else null
+        )
+        else -> throw IllegalArgumentException("Unknown payload kind: ${json.optString("kind")}")
     }
 
     private fun stateToJson(s: CronJobState) = JSONObject().apply {
