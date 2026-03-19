@@ -122,6 +122,13 @@ class ModelConfigActivity : AppCompatActivity() {
     private fun showPage2(provider: ProviderDefinition) {
         selectedProvider = provider
         selectedModelId = null
+
+        // Pre-select current model if this is the active provider
+        val modelRef = currentModelRef
+        if (modelRef != null && modelRef.startsWith("${provider.id}/")) {
+            selectedModelId = modelRef.removePrefix("${provider.id}/")
+        }
+
         binding.pageProviderList.visibility = View.GONE
         binding.pageProviderDetail.visibility = View.VISIBLE
         binding.toolbar.title = provider.name
