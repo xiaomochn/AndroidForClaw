@@ -234,23 +234,31 @@ class DeviceTool(private val context: Context) : Tool {
     private suspend fun executeType(args: Map<String, Any?>): ToolResult {
         val text = args["text"] as? String ?: return ToolResult.error("Missing 'text' for kind=type")
 
-        // If ref provided, tap it first to focus
+        val clawIme = com.xiaomo.androidforclaw.service.ClawIMEManager
+        val clawImeActive = clawIme.isClawImeEnabled(context) && clawIme.isConnected()
+
+        // If ref provided, try to focus input (needs accessibility or ClawIME)
         val resolved = resolveCoordinate(args)
         if (resolved != null) {
             val (x, y, _) = resolved
-            val focused = AccessibilityProxy.tap(x, y)
-            if (!focused) {
-                return ToolResult.error("Failed to focus input via accessibility service at ($x, $y)")
+            if (clawImeActive) {
+                // ClawIME is active, tap ref without accessibility (use shell input tap)
+                Runtime.getRuntime().exec(arrayOf("sh", "-c", "input tap $x $y")).waitFor()
+                delay(POST_ACTION_DELAY_MS)
+            } else {
+                // No ClawIME, need accessibility
+                val focused = AccessibilityProxy.tap(x, y)
+                if (!focused) {
+                    return ToolResult.error("输入失败：ClawIME 未激活，且无障碍服务未开启。请先切换到 ClawIME 输入法或开启无障碍权限")
+                }
+                delay(POST_ACTION_DELAY_MS)
             }
-            delay(POST_ACTION_DELAY_MS)
         }
 
-        // Type text via ADB IME or input text
+        // Type text
         try {
-            // Try ADB IME first
-            val clawIme = com.xiaomo.androidforclaw.service.ClawIMEManager
             val typed: Boolean
-            if (clawIme.isClawImeEnabled(context) && clawIme.isConnected()) {
+            if (clawImeActive) {
                 typed = clawIme.inputText(text)
                 Log.d(TAG, "ClawIME.inputText('$text'): $typed")
             } else {
@@ -262,7 +270,7 @@ class DeviceTool(private val context: Context) : Tool {
                 Log.d(TAG, "input text exitCode: $exitCode")
             }
             if (!typed) {
-                return ToolResult.error("Type failed: input method could not commit text")
+                return ToolResult.error("Type failed: ClawIME could not commit text (keyboard not active)")
             }
             val refLabel = (args["ref"] as? String)?.let { refManager.getRefNode(it)?.text }
             return ToolResult.success("Typed '$text'${refLabel?.let { " into '$it'" } ?: ""}")
