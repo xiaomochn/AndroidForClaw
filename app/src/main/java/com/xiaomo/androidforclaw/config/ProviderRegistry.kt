@@ -573,7 +573,7 @@ object ProviderRegistry {
         tutorialUrl = "https://api.xiaomimimo.com/",
         presetModels = emptyList(),
         supportsDiscovery = false,
-        group = ProviderGroup.MORE,
+        group = ProviderGroup.PRIMARY,
         order = 140
     )
 
