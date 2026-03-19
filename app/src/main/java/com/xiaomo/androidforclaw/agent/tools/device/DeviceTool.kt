@@ -249,12 +249,20 @@ class DeviceTool(private val context: Context) : Tool {
         try {
             // Try ADB IME first
             val adbIme = com.xiaomo.androidforclaw.service.AdbIMEManager
-            if (adbIme.isAdbImeEnabled(context)) {
-                adbIme.inputText(text)
+            val typed: Boolean
+            if (adbIme.isAdbImeEnabled(context) && adbIme.isConnected()) {
+                typed = adbIme.inputText(text)
+                Log.d(TAG, "AdbIME.inputText('$text'): $typed")
             } else {
                 // Fallback to input text (limited to ASCII)
                 val escaped = text.replace("'", "'\\''")
-                Runtime.getRuntime().exec(arrayOf("sh", "-c", "input text '$escaped'")).waitFor()
+                val proc = Runtime.getRuntime().exec(arrayOf("sh", "-c", "input text '$escaped'"))
+                val exitCode = proc.waitFor()
+                typed = exitCode == 0
+                Log.d(TAG, "input text exitCode: $exitCode")
+            }
+            if (!typed) {
+                return ToolResult.error("Type failed: input method could not commit text")
             }
             val refLabel = (args["ref"] as? String)?.let { refManager.getRefNode(it)?.text }
             return ToolResult.success("Typed '$text'${refLabel?.let { " into '$it'" } ?: ""}")
