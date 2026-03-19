@@ -385,7 +385,7 @@ class UnifiedLLMProvider(private val context: Context) {
 
         return when (api) {
             ModelApi.ANTHROPIC_MESSAGES -> {
-                "$baseUrl/messages"
+                "$baseUrl/v1/messages"
             }
             ModelApi.OPENAI_COMPLETIONS -> {
                 "$baseUrl/chat/completions"
