@@ -231,14 +231,16 @@ class TermuxBridgeTool(private val context: Context) : Tool {
         // Generate keypair if missing
         ensureKeypair()
 
-        // Build the setup command (system-shell compatible for Xiaomi)
+        // Build the setup command — uses cp instead of >> to avoid permission issues
+        // on Android 13+ scoped storage. Each step tolerates failures.
         val command = "export PREFIX=/data/data/com.termux/files/usr && " +
             "export LD_LIBRARY_PATH=\$PREFIX/lib && " +
             "export PATH=\$PREFIX/bin:\$PATH && " +
             "export HOME=/data/data/com.termux/files/home && " +
             "pkg install -y openssh && " +
             "mkdir -p \$HOME/.ssh && " +
-            "cat /sdcard/.androidforclaw/.ssh/id_ed25519.pub >> \$HOME/.ssh/authorized_keys && " +
+            "rm -f \$HOME/.ssh/authorized_keys && " +
+            "cp /sdcard/.androidforclaw/.ssh/id_ed25519.pub \$HOME/.ssh/authorized_keys && " +
             "chmod 700 \$HOME/.ssh && " +
             "chmod 600 \$HOME/.ssh/authorized_keys && " +
             "sshd && echo '✅ SSH configured'"
