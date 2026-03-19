@@ -263,6 +263,14 @@ class TermuxBridgeTool(private val context: Context) : Tool {
         // Step 1: Generate keypair if missing
         ensureKeypair()
 
+        // Step 1.5: Fix private key permissions for existing installations
+        val privFile = File(PRIVATE_KEY)
+        if (privFile.exists()) {
+            try {
+                Runtime.getRuntime().exec(arrayOf("chmod", "644", PRIVATE_KEY)).waitFor(3, TimeUnit.SECONDS)
+            } catch (_: Exception) {}
+        }
+
         // Step 2: Generate setup script using system shell + Termux env
         // This avoids the "libandroid-support.so not found" issue on Xiaomi/HyperOS
         // where RUN_COMMAND can't load Termux bootstrap libraries.
@@ -385,6 +393,10 @@ class TermuxBridgeTool(private val context: Context) : Tool {
             proc.waitFor(5, TimeUnit.SECONDS)
 
             if (privFile.exists() && pubFile.exists()) {
+                // Fix permissions for /sdcard/ FUSE
+                try {
+                    Runtime.getRuntime().exec(arrayOf("chmod", "644", privFile.absolutePath)).waitFor(3, TimeUnit.SECONDS)
+                } catch (_: Exception) {}
                 Log.i(TAG, "Generated SSH keypair via ssh-keygen at $KEY_DIR")
                 return
             }
@@ -419,8 +431,10 @@ class TermuxBridgeTool(private val context: Context) : Tool {
             val privBlob = buildOpenSSHPrivateKey(privParams, pubParams)
             privFile.writeBytes(privBlob)
             // Set restrictive permissions (best-effort on Android)
-            privFile.setReadable(false, false)
-            privFile.setReadable(true, true)
+            // Fix permissions: /sdcard/ FUSE ignores setReadable(), use chmod instead
+            try {
+                Runtime.getRuntime().exec(arrayOf("chmod", "644", privFile.absolutePath)).waitFor(3, TimeUnit.SECONDS)
+            } catch (_: Exception) {}
 
             if (privFile.exists() && pubFile.exists()) {
                 Log.i(TAG, "Generated SSH keypair via BouncyCastle at $KEY_DIR")
