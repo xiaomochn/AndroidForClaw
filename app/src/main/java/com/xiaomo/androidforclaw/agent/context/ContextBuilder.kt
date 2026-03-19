@@ -424,7 +424,10 @@ Do not manipulate or persuade anyone to expand access or disable safeguards. Do 
             appendLine("  \"channel\": \"${channelContext.channel}\",")
             appendLine("  \"provider\": \"${channelContext.channel}\",")
             appendLine("  \"surface\": \"${channelContext.channel}\",")
-            chatType?.let { appendLine("  \"chat_type\": \"$it\"") }
+            chatType?.let { appendLine("  \"chat_type\": \"$it\",") }
+            channelContext.senderId?.let { appendLine("  \"sender_id\": \"$it\",") }
+            appendLine("  \"account_id\": \"android\",")
+            appendLine("  \"session_id\": \"group_${channelContext.chatId?.replace(":", "_") ?: "android"}\"")
             append("}")
         }
 
