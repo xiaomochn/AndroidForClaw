@@ -51,11 +51,29 @@ class SessionManager {
 
     companion object {
         private const val PREF_LAST_SESSION_ID = "last_session_id"
+        private const val PREF_DELETED_SESSIONS = "deleted_session_ids"
     }
 
     // MMKV for persistent storage
     private val mmkv by lazy {
         com.tencent.mmkv.MMKV.defaultMMKV()
+    }
+
+    /** 已删除的 session ID 集合（持久化到 MMKV） */
+    private val deletedSessionIds: MutableSet<String>
+        get() {
+            val raw = mmkv.decodeString(PREF_DELETED_SESSIONS) ?: ""
+            return if (raw.isEmpty()) mutableSetOf() else raw.split(",").toMutableSet()
+        }
+
+    private fun addDeletedSessionId(id: String) {
+        val set = deletedSessionIds
+        set.add(id)
+        mmkv.encode(PREF_DELETED_SESSIONS, set.joinToString(","))
+    }
+
+    private fun isDeletedSession(id: String): Boolean {
+        return deletedSessionIds.contains(id)
     }
 
     private val _sessions = MutableStateFlow<List<Session>>(listOf(createDefaultSession()))
@@ -211,8 +229,8 @@ class SessionManager {
                 return
             }
 
-            // Convert backend sessions to UI sessions
-            val backendSessions = backendSessionKeys.mapNotNull { key ->
+            // Convert backend sessions to UI sessions（过滤已删除的会话）
+            val backendSessions = backendSessionKeys.filter { key -> !isDeletedSession(key) }.mapNotNull { key ->
                 val backendSession = backendSessionManager.get(key)
                 if (backendSession != null) {
                     val type = when {
@@ -381,6 +399,10 @@ class SessionManager {
             val newCurrent = remainingSessions.first()
             _currentSession.value = newCurrent.copy(isActive = true)
         }
+
+        // 持久化已删除 ID，防止重启后重新加载
+        addDeletedSessionId(sessionId)
+        android.util.Log.d("SessionManager", "🗑️ Session deleted and persisted: $sessionId")
     }
 
     /**
