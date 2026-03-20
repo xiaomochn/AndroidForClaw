@@ -63,8 +63,8 @@ class TypeSkill(private val context: Context) : Skill {
             // Type text
             DeviceController.inputText(text, context)
 
-            // Wait for input completion + IME response (dynamically adjusted by text length)
-            val waitTime = 100L + (text.length * 5L).coerceAtMost(300L) // Min 100ms, max 400ms
+            // Wait for input completion + IME response
+            val waitTime = (100L + (text.length * 5L).coerceAtMost(300L)).coerceAtLeast(1000L)
             kotlinx.coroutines.delay(waitTime)
 
             SkillResult.success(

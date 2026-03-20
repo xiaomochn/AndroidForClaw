@@ -83,11 +83,11 @@ class TapSkill : Skill {
             }
 
             // Wait for UI response (animation, page transitions, etc.)
-            kotlinx.coroutines.delay(200)
+            kotlinx.coroutines.delay(1000)
 
             SkillResult.success(
                 "Tapped at ($x, $y)",
-                mapOf("x" to x, "y" to y, "wait_time_ms" to 200)
+                mapOf("x" to x, "y" to y, "wait_time_ms" to 1000)
             )
         } catch (e: IllegalStateException) {
             SkillResult.error("Service disconnected: ${e.message}")

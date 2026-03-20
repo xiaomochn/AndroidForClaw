@@ -54,11 +54,11 @@ class BackSkill : Skill {
             }
 
             // Wait for page return animation
-            kotlinx.coroutines.delay(150)
+            kotlinx.coroutines.delay(1000)
 
             SkillResult.success(
-                "Back button pressed (waited 150ms for transition)",
-                mapOf("wait_time_ms" to 150)
+                "Back button pressed (waited 1000ms for transition)",
+                mapOf("wait_time_ms" to 1000)
             )
         } catch (e: Exception) {
             Log.e(TAG, "Back button press failed", e)

@@ -102,13 +102,13 @@ class ClawImeInputSkill(private val context: Context) : Skill {
                     if (!inputSuccess) {
                         return SkillResult.error("输入文本失败")
                     }
-                    kotlinx.coroutines.delay(200)
+                    kotlinx.coroutines.delay(500)
 
                     val sendSuccess = ClawIMEManager.sendMessage()
                     if (!sendSuccess) {
                         return SkillResult.error("发送消息失败")
                     }
-                    kotlinx.coroutines.delay(100)
+                    kotlinx.coroutines.delay(1000)
 
                     SkillResult.success(
                         "已输入并发送: $text (${text.length} chars)",
@@ -126,7 +126,7 @@ class ClawImeInputSkill(private val context: Context) : Skill {
                         return SkillResult.error("输入文本失败")
                     }
 
-                    val waitTime = 100L + (text.length * 5L).coerceAtMost(300L)
+                    val waitTime = (100L + (text.length * 5L).coerceAtMost(300L)).coerceAtLeast(1000L)
                     kotlinx.coroutines.delay(waitTime)
 
                     SkillResult.success(

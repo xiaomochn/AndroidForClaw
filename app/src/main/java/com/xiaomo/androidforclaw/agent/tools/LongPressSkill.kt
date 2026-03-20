@@ -76,14 +76,14 @@ class LongPressSkill : Skill {
             }
 
             // Wait for menu popup or response after long press
-            kotlinx.coroutines.delay(200)
+            kotlinx.coroutines.delay(1000)
 
             SkillResult.success(
                 "Long pressed at ($x, $y)",
                 mapOf(
                     "x" to x,
                     "y" to y,
-                    "wait_time_ms" to 200
+                    "wait_time_ms" to 1000
                 )
             )
         } catch (e: IllegalStateException) {

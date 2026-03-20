@@ -54,11 +54,11 @@ class HomeSkill : Skill {
             }
 
             // Wait for launcher to load
-            kotlinx.coroutines.delay(300)
+            kotlinx.coroutines.delay(1000)
 
             SkillResult.success(
-                "Home button pressed (waited 300ms for launcher)",
-                mapOf("wait_time_ms" to 300)
+                "Home button pressed (waited 1000ms for launcher)",
+                mapOf("wait_time_ms" to 1000)
             )
         } catch (e: Exception) {
             Log.e(TAG, "Home button press failed", e)

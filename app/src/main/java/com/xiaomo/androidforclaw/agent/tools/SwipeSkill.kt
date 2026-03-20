@@ -85,7 +85,7 @@ class SwipeSkill : Skill {
             }
 
             // Wait for swipe completion + UI stabilization (swipe animation + inertial scrolling)
-            val waitTime = duration + 300
+            val waitTime = (duration + 1000L).coerceAtLeast(1000L)
             kotlinx.coroutines.delay(waitTime)
 
             SkillResult.success(

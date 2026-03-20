@@ -83,13 +83,13 @@ class OpenAppSkill(private val context: Context) : Skill {
                             )
                         }
 
-                        // Wait for app launch (reduced to 800ms for faster response)
+                        // Wait for app launch
                         Log.d(TAG, "Waiting for app to launch...")
-                        kotlinx.coroutines.delay(800)
+                        kotlinx.coroutines.delay(1000)
 
                         SkillResult.success(
-                            "App opened: $packageName (waited 0.8s for launch)",
-                            mapOf("package" to packageName, "wait_time_ms" to 800)
+                            "App opened: $packageName (waited 1s for launch)",
+                            mapOf("package" to packageName, "wait_time_ms" to 1000)
                         )
                     }
                 } catch (e: TimeoutCancellationException) {
