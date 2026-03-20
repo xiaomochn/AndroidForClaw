@@ -13,7 +13,7 @@ class AppUpdaterTest {
 
     @Test
     fun `GitHub repo constants are correct`() {
-        assertEquals("xiaomochn", AppUpdater.GITHUB_OWNER)
+        assertEquals("SelectXn00b", AppUpdater.GITHUB_OWNER)
         assertEquals("AndroidForClaw", AppUpdater.GITHUB_REPO)
         assertTrue(AppUpdater.GITHUB_API_LATEST.contains("api.github.com"))
         assertTrue(AppUpdater.GITHUB_API_LATEST.contains("SelectXn00b/AndroidForClaw"))

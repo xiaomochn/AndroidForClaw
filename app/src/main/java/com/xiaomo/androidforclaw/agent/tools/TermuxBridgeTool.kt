@@ -667,15 +667,17 @@ class TermuxBridgeTool(private val context: Context) : Tool {
     // ==================== Tool Interface ====================
 
     override suspend fun execute(args: Map<String, Any?>): ToolResult {
-        // 1. Check Termux status first
-        val initialStatus = getStatus()
-        if (!initialStatus.termuxInstalled) {
+        // 1. Fast check: Termux not installed (avoids getStatus() which calls Android-only APIs)
+        if (!isTermuxInstalled()) {
             return ToolResult(
                 success = false,
                 content = "Termux is not installed. Install from F-Droid: https://f-droid.org/packages/com.termux/",
-                metadata = mapOf("backend" to "termux", "status" to initialStatus.message, "step" to initialStatus.lastStep.name)
+                metadata = mapOf("backend" to "termux", "status" to "Termux 未安装", "step" to TermuxSetupStep.TERMUX_NOT_INSTALLED.name)
             )
         }
+
+        // 1b. Full status check (requires Android runtime for deeper checks)
+        val initialStatus = getStatus()
 
         // 2. Resolve command
         val command = args["command"] as? String

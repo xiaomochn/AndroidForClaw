@@ -841,16 +841,42 @@ class ConfigLoader(private val context: Context) {
         }
     }
 
+    /**
+     * 已知环境变量名 → Provider ID 映射
+     * 来源: OpenClaw PROVIDER_ENV_API_KEY_CANDIDATES
+     */
+    private val ENV_VAR_TO_PROVIDER = mapOf(
+        "OPENROUTER_API_KEY" to "openrouter",
+        "ANTHROPIC_API_KEY" to "anthropic",
+        "OPENAI_API_KEY" to "openai",
+        "GEMINI_API_KEY" to "google",
+        "DEEPSEEK_API_KEY" to "deepseek",
+        "XAI_API_KEY" to "xai",
+        "OLLAMA_API_KEY" to "ollama",
+        "MOONSHOT_API_KEY" to "moonshot",
+        "KIMI_API_KEY" to "moonshot",
+        "KIMICODE_API_KEY" to "kimi-coding",
+        "XIAOMI_API_KEY" to "xiaomi",
+        "MISTRAL_API_KEY" to "mistral",
+        "TOGETHER_API_KEY" to "together",
+        "HF_TOKEN" to "huggingface",
+        "NVIDIA_API_KEY" to "nvidia",
+        "QIANFAN_API_KEY" to "qianfan",
+        "VOLCANO_ENGINE_API_KEY" to "volcengine"
+    )
+
     private fun replaceEnvVars(json: String): String {
         var result = json
         val pattern = Regex("""\$\{([A-Za-z_][A-Za-z0-9_]*)\}""")
+        val unresolvedKnown = mutableListOf<String>()
+
         pattern.findAll(json).forEach { match ->
             val varName = match.groupValues[1]
             val value = System.getenv(varName)
             if (value != null) {
                 result = result.replace("\${$varName}", value)
             } else {
-                // Fallback: use built-in key for known providers on Android
+                // Fallback 1: built-in key (currently only OpenRouter)
                 val builtInValue = when (varName) {
                     "OPENROUTER_API_KEY" -> BuiltInKeyProvider.getKey()
                     else -> null
@@ -859,11 +885,36 @@ class ConfigLoader(private val context: Context) {
                     result = result.replace("\${$varName}", builtInValue)
                     Log.i(TAG, "🔑 使用内置 Key 替换: \${$varName}")
                 } else {
-                    Log.w(TAG, "⚠️ 环境变量未找到: \${$varName}")
+                    val providerId = ENV_VAR_TO_PROVIDER[varName]
+                    if (providerId != null) {
+                        unresolvedKnown.add(varName)
+                        Log.w(TAG, "⚠️ 环境变量 \${$varName} (provider: $providerId) 未设置。" +
+                            "请在配置中直接填入 API Key。")
+                    } else {
+                        Log.w(TAG, "⚠️ 未知环境变量: \${$varName}")
+                    }
                 }
             }
         }
+
+        // Strip unresolved known provider env vars from JSON to avoid sending literal
+        // `${VAR}` as Bearer token (causes confusing 401 "Missing Authentication header").
+        // After stripping, apiKey becomes null → config validation catches it with a clear message.
+        if (unresolvedKnown.isNotEmpty()) {
+            for (varName in unresolvedKnown) {
+                // Match: "apiKey": "${VAR_NAME}" (with optional whitespace)
+                val stripPattern = Regex("""("apiKey"\s*:\s*)"\$\{$varName\}"""")
+                result = stripPattern.replace(result) { "${it.groupValues[1]}null" }
+            }
+            invalidateConfigCache()
+        }
+
         return result
+    }
+
+    private fun invalidateConfigCache() {
+        openclawConfigCacheValid = false
+        cachedOpenClawConfig = null
     }
 
     /**
@@ -881,10 +932,15 @@ class ConfigLoader(private val context: Context) {
             }
         }
 
-        // Validate providers have baseUrl
+        // Validate providers have baseUrl and apiKey (for key-required providers)
         config.resolveProviders().forEach { (name, provider) ->
             require(provider.baseUrl.isNotBlank()) {
                 "Provider '$name' 缺少 baseUrl"
+            }
+            val def = ProviderRegistry.findById(name)
+            if (def?.keyRequired == true && provider.apiKey.isNullOrBlank()) {
+                Log.w(TAG, "⚠️ Provider '${def.name}' 需要 API Key 但未配置。" +
+                    "请在设置中填入 API Key，否则请求会返回 401。")
             }
         }
 

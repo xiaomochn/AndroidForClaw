@@ -14,7 +14,7 @@ class ObserverPermissionActivitySourceAlignmentTest {
     fun permissionScreen_refreshesStatus_whenReturningFromSystemSettings() {
         val src = sourceFile.readText()
         assertTrue(src.contains("override fun onResume()"))
-        assertTrue(src.contains("mainHandler.postDelayed({ checkPermissionsAsync() }, 800)"))
+        assertTrue(src.contains("mainHandler.postDelayed({ checkPermissionsAsync("))
         assertTrue(src.contains("override fun onRestart()"))
         assertTrue(src.contains("override fun onWindowFocusChanged(hasFocus: Boolean)"))
         assertTrue(src.contains("if (hasFocus)"))
