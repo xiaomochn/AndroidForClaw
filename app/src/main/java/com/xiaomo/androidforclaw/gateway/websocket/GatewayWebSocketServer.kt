@@ -11,6 +11,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import com.xiaomo.androidforclaw.logging.Log
 import java.io.IOException
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -76,9 +77,15 @@ class GatewayWebSocketServer(
     }
 
     override fun serve(session: IHTTPSession): Response {
+        // WebSocket 升级请求必须优先交给 NanoWSD 处理，否则会返回 200 而非 101
+        val upgradeHeader = session.headers["upgrade"]
+        if (upgradeHeader != null && upgradeHeader.equals("websocket", ignoreCase = true)) {
+            return super.serve(session)
+        }
+
         val uri = session.uri
 
-        // Serve homepage
+        // 非 WebSocket 请求：返回 homepage
         if (uri == "/" || uri.isEmpty()) {
             return newFixedLengthResponse(
                 Response.Status.OK,
@@ -103,28 +110,14 @@ class GatewayWebSocketServer(
 
             Log.i("GatewayWebSocketServer","WebSocket opened: $clientId")
 
-            // Send Hello-Ok frame (OpenClaw Protocol v3)
-            val hello = HelloOkFrame(
-                protocol = PROTOCOL_VERSION,
-                server = ServerInfo(
-                    version = "1.0.0-android",
-                    connId = clientId
-                ),
-                features = Features(
-                    methods = handlers.keys.toList(),
-                    events = listOf("agent.start", "agent.complete", "agent.error")
-                ),
-                snapshot = mapOf(
-                    "authRequired" to (tokenAuth != null),
-                    "platform" to "android"
-                ),
-                policy = Policy(
-                    maxPayload = 10485760,  // 10MB
-                    maxBufferedBytes = 52428800,  // 50MB
-                    tickIntervalMs = 5000
-                )
-            )
-            connection.send(hello)
+            // Send connect.challenge event (OpenClaw Protocol v3 handshake)
+            // Client will respond with a "connect" RPC containing the nonce.
+            val nonce = UUID.randomUUID().toString()
+            connection.send(EventFrame(
+                event = "connect.challenge",
+                payload = mapOf("nonce" to nonce),
+                seq = 0L
+            ))
         }
 
         override fun onClose(
