@@ -146,6 +146,7 @@ class MainActivityCompose : ComponentActivity() {
     }
 
     private var chatBroadcastReceiver: ChatBroadcastReceiver? = null
+    private var permissionChangedReceiver: android.content.BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -198,10 +199,25 @@ class MainActivityCompose : ComponentActivity() {
 
         // Register ADB test interface
         registerChatBroadcastReceiver()
+
+        // Register permission change receiver (from PermissionActivity in observer module)
+        permissionChangedReceiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(ctx: android.content.Context, intent: android.content.Intent) {
+                com.xiaomo.androidforclaw.accessibility.AccessibilityProxy.refreshPermissions(ctx)
+            }
+        }
+        val permFilter = android.content.IntentFilter("com.xiaomo.androidforclaw.PERMISSION_CHANGED")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(permissionChangedReceiver, permFilter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(permissionChangedReceiver, permFilter)
+        }
     }
 
     override fun onResume() {
         super.onResume()
+        // Refresh permission LiveData on every resume
+        com.xiaomo.androidforclaw.accessibility.AccessibilityProxy.refreshPermissions(this)
         // Notify float window manager when main activity is visible
         SessionFloatWindow.setMainActivityVisible(true, this)
         // Silent update check on every resume (cold + warm start)
@@ -263,6 +279,7 @@ class MainActivityCompose : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         unregisterChatBroadcastReceiver()
+        permissionChangedReceiver?.let { try { unregisterReceiver(it) } catch (_: Exception) {} }
     }
 
     /**
@@ -301,40 +318,50 @@ class MainActivityCompose : ComponentActivity() {
 
 
     /**
-     * Check and request file management permission
+     * Check and request file management permission.
+     * Shows an in-app dialog if permission is not granted.
      */
     private fun checkAndRequestStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11+ requires MANAGE_EXTERNAL_STORAGE permission
             if (!Environment.isExternalStorageManager()) {
-                // Debug version skips permission request page to avoid jumping to Settings causing Activity to go background affecting tests
-                if (com.xiaomo.androidforclaw.BuildConfig.SKIP_PERMISSION_REQUEST) {
-                    Log.w(TAG, "⚠️ DEBUG mode: File management permission not granted, but skipping request page")
-                    Log.w(TAG, "   Config file read/write may fail, please grant permission manually")
-                    return
-                }
-
-                Log.i(TAG, "File management permission not granted, requesting permission...")
-                try {
-                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                    intent.data = Uri.parse("package:$packageName")
-                    startActivityForResult(intent, REQUEST_MANAGE_EXTERNAL_STORAGE)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Cannot open file management permission settings page", e)
-                    // Fallback to general settings page
-                    try {
-                        val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                        startActivityForResult(intent, REQUEST_MANAGE_EXTERNAL_STORAGE)
-                    } catch (e2: Exception) {
-                        Log.e(TAG, "Cannot open file management permission settings", e2)
-                    }
-                }
+                Log.i(TAG, "File management permission not granted, showing dialog...")
+                showStoragePermissionDialog()
             } else {
                 Log.i(TAG, "✅ File management permission granted")
             }
         } else {
-            // Android 10 and below use traditional permissions
             Log.i(TAG, "Android 10 and below, using traditional storage permissions")
+        }
+    }
+
+    private fun showStoragePermissionDialog() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("需要文件管理权限")
+            .setMessage("ForClaw 需要「所有文件访问」权限来保存配置和聊天记录。\n\n请在接下来的设置页面中开启此权限。")
+            .setCancelable(false)
+            .setPositiveButton("去授权") { _, _ ->
+                openStoragePermissionSettings()
+            }
+            .setNegativeButton("退出") { _, _ ->
+                finish()
+            }
+            .show()
+    }
+
+    private fun openStoragePermissionSettings() {
+        try {
+            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+            intent.data = Uri.parse("package:$packageName")
+            startActivityForResult(intent, REQUEST_MANAGE_EXTERNAL_STORAGE)
+        } catch (e: Exception) {
+            Log.e(TAG, "Cannot open file management permission settings page", e)
+            try {
+                val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                startActivityForResult(intent, REQUEST_MANAGE_EXTERNAL_STORAGE)
+            } catch (e2: Exception) {
+                Log.e(TAG, "Cannot open file management permission settings", e2)
+                Toast.makeText(this, "无法打开权限设置，请手动授权", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -346,8 +373,11 @@ class MainActivityCompose : ComponentActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 if (Environment.isExternalStorageManager()) {
                     Log.i(TAG, "✅ File management permission granted")
+                    // Restart to apply — recreate so config/sessions init properly
+                    recreate()
                 } else {
-                    Log.w(TAG, "⚠️ File management permission not granted, config file reading may fail")
+                    Log.w(TAG, "⚠️ File management permission still not granted")
+                    showStoragePermissionDialog()
                 }
             }
         }

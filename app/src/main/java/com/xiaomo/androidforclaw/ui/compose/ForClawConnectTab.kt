@@ -1,7 +1,10 @@
 package com.xiaomo.androidforclaw.ui.compose
 
+import android.content.ComponentName
 import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.clickable
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.xiaomo.androidforclaw.accessibility.AccessibilityProxy
 import com.xiaomo.androidforclaw.agent.skills.SkillsLoader
 import com.xiaomo.androidforclaw.config.ConfigLoader
 import com.xiaomo.androidforclaw.ui.activity.ModelConfigActivity
@@ -47,6 +51,11 @@ fun ForClawConnectTab() {
     // ── Channels ───────────────────────────────────────────────
     var feishuEnabled by remember { mutableStateOf(false) }
     var discordEnabled by remember { mutableStateOf(false) }
+
+    // ── 权限（LiveData 实时同步）────────────────────────────────
+    val accessibilityOk by AccessibilityProxy.isConnected.observeAsState(false)
+    val overlayOk by AccessibilityProxy.overlayGranted.observeAsState(false)
+    val screenCaptureOk by AccessibilityProxy.screenCaptureGranted.observeAsState(false)
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
@@ -90,6 +99,8 @@ fun ForClawConnectTab() {
             try {
                 skillsCount = SkillsLoader(context).getStatistics().totalSkills
             } catch (_: Exception) {}
+
+            // 权限状态由 AccessibilityProxy LiveData 驱动，无需在此手动检查
         }
     }
 
@@ -156,6 +167,36 @@ fun ForClawConnectTab() {
             rows = listOf(
                 StatusRow("已加载", if (skillsCount > 0) "$skillsCount 个" else "加载中..."),
             ),
+        )
+
+        // ── 权限 ─────────────────────────────────────────────
+        val allPermissionsOk = accessibilityOk && overlayOk && screenCaptureOk
+        StatusCard(
+            title = "权限",
+            icon = Icons.Default.Security,
+            rows = listOf(
+                StatusRow("无障碍", if (accessibilityOk) "已授权" else "未授权",
+                    if (accessibilityOk) StatusLevel.Ok else StatusLevel.Error),
+                StatusRow("悬浮窗", if (overlayOk) "已授权" else "未授权",
+                    if (overlayOk) StatusLevel.Ok else StatusLevel.Error),
+                StatusRow("录屏", if (screenCaptureOk) "已授权" else "未授权",
+                    if (screenCaptureOk) StatusLevel.Ok else StatusLevel.Error),
+            ),
+            onClick = {
+                try {
+                    context.startActivity(Intent().apply {
+                        component = ComponentName(
+                            "com.xiaomo.androidforclaw",
+                            "com.xiaomo.androidforclaw.accessibility.PermissionActivity"
+                        )
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    })
+                } catch (_: Exception) {
+                    context.startActivity(Intent(context,
+                        com.xiaomo.androidforclaw.ui.activity.PermissionsActivity::class.java))
+                }
+            },
+            clickLabel = if (allPermissionsOk) "查看" else "去授权",
         )
     }
 }

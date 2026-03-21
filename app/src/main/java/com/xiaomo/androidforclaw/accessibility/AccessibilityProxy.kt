@@ -21,6 +21,20 @@ object AccessibilityProxy {
     private val _isConnected = MutableLiveData(false)
     val isConnected: LiveData<Boolean> = _isConnected
 
+    private val _overlayGranted = MutableLiveData(false)
+    val overlayGranted: LiveData<Boolean> = _overlayGranted
+
+    private val _screenCaptureGranted = MutableLiveData(false)
+    val screenCaptureGranted: LiveData<Boolean> = _screenCaptureGranted
+
+    /** 从任意地方调用来刷新权限状态（PermissionActivity 授权后调用） */
+    fun refreshPermissions(context: android.content.Context) {
+        _overlayGranted.postValue(android.provider.Settings.canDrawOverlays(context))
+        _screenCaptureGranted.postValue(isMediaProjectionGranted())
+        val svcConnected = service != null && isServiceReady()
+        _isConnected.postValue(svcConnected)
+    }
+
     // Cached UI tree
     private data class CachedUITree(
         val nodes: List<ViewNode>,

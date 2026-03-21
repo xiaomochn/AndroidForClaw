@@ -91,7 +91,7 @@ android {
             // Debug版本配置标记
             buildConfigField 'Boolean', 'IS_SYSTEM_APP', 'false'
             buildConfigField 'String', 'BUILD_VARIANT', '"debug"'
-            buildConfigField 'Boolean', 'SKIP_PERMISSION_REQUEST', 'true'  // Debug版本跳过权限请求页面
+            buildConfigField 'Boolean', 'SKIP_PERMISSION_REQUEST', 'false'
             // 使用debug版本的AndroidManifest（不使用systemuid）
             manifestPlaceholders = [
                 useSystemUid: "false",
@@ -247,6 +247,7 @@ dependencies {
     implementation 'androidx.activity:activity-compose:1.12.2'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0'
     implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.compose.runtime:runtime-livedata'
     implementation 'androidx.compose.foundation:foundation'
 
     debugImplementation 'androidx.compose.ui:ui-tooling'

@@ -12,6 +12,33 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <!-- 顶部返回栏 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <ImageButton
+                android:id="@+id/btn_back"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_revert"
+                android:contentDescription="返回"
+                android:padding="12dp" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="权限管理"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#212121" />
+        </LinearLayout>
+
         <!-- 顶部提示 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"

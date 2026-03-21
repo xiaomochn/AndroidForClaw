@@ -361,7 +361,11 @@ class ModelSetupActivity : AppCompatActivity() {
                 agents = updatedAgents
             )
 
-            configLoader.saveOpenClawConfig(updatedConfig)
+            val saved = configLoader.saveOpenClawConfig(updatedConfig)
+            if (!saved) {
+                Toast.makeText(this, "保存失败：无法写入配置文件，请检查存储权限", Toast.LENGTH_LONG).show()
+                return
+            }
 
             Log.i(TAG, "✅ 模型配置已保存: provider=$providerName, model=$modelId")
             markSetupSeen()

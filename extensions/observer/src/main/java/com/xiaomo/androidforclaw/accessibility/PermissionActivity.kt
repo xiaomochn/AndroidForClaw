@@ -89,6 +89,8 @@ class PermissionActivity : Activity() {
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "lifecycle onResume")
+        // 广播权限状态变化，让 app 模块刷新 LiveData
+        sendBroadcast(android.content.Intent("com.xiaomo.androidforclaw.PERMISSION_CHANGED"))
         // 立即刷新一次，覆盖从系统设置/悬浮按钮返回但没有 onActivityResult 的场景
         checkPermissionsAsync("onResume")
         // 启动定期检查
@@ -126,6 +128,9 @@ class PermissionActivity : Activity() {
 
     private fun setupViews() {
         binding.apply {
+            // 返回按钮
+            btnBack.setOnClickListener { finish() }
+
             // 无障碍服务按钮
             btnAccessibility.setOnClickListener {
                 Log.d(TAG, "btnAccessibility clicked")
