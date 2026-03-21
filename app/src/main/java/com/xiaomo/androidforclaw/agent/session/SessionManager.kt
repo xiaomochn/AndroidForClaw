@@ -140,13 +140,53 @@ class SessionManager(
      * Clear session
      */
     fun clear(sessionKey: String) {
+        // Try to delete JSONL file from in-memory cache first
         val session = sessions.remove(sessionKey)
         if (session != null) {
             getSessionJSONLFile(session.sessionId).delete()
-            sessionIndex.remove(sessionKey)
+        }
+
+        // Also check index (session may not be in memory cache after restart)
+        val metadata = sessionIndex.remove(sessionKey)
+        if (metadata != null) {
+            if (session == null) {
+                // Session wasn't in memory, delete JSONL via index metadata
+                getSessionJSONLFile(metadata.sessionId).delete()
+            }
             saveIndex()
         }
+
         Log.d(TAG, "Session cleared: $sessionKey")
+
+        // Opportunistic cleanup: remove orphan JSONL files not referenced by any index entry
+        cleanOrphanJsonlFiles()
+    }
+
+    /**
+     * Clean orphan JSONL files — files in sessions/ that have no corresponding entry in sessions.json.
+     * Called opportunistically when a session is deleted.
+     */
+    fun cleanOrphanJsonlFiles() {
+        try {
+            val indexedSessionIds = sessionIndex.values.map { it.sessionId }.toSet()
+            val jsonlFiles = sessionsDir.listFiles { file -> file.extension == "jsonl" } ?: return
+
+            var cleaned = 0
+            for (file in jsonlFiles) {
+                val fileSessionId = file.nameWithoutExtension
+                if (fileSessionId !in indexedSessionIds) {
+                    file.delete()
+                    cleaned++
+                    Log.d(TAG, "🧹 Cleaned orphan JSONL: ${file.name}")
+                }
+            }
+
+            if (cleaned > 0) {
+                Log.i(TAG, "🧹 Cleaned $cleaned orphan JSONL file(s)")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to clean orphan JSONL files: ${e.message}")
+        }
     }
 
     /**
