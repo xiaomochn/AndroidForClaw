@@ -17,6 +17,7 @@ import com.xiaomo.androidforclaw.providers.UnifiedLLMProvider
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.takeWhile
 import org.junit.*
+import org.junit.Ignore
 import org.junit.Assert.*
 import org.junit.runner.RunWith
 import org.junit.runners.MethodSorters
@@ -42,6 +43,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 @RunWith(AndroidJUnit4::class)
 @LargeTest
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@Ignore("Requires real LLM API key configured on device")
 class AgentLoopE2ETest {
 
     companion object {

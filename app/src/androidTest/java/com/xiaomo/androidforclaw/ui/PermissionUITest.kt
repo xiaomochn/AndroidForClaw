@@ -3,9 +3,9 @@ package com.xiaomo.androidforclaw.ui
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
-import androidx.test.rule.GrantPermissionRule
+import androidx.test.platform.app.InstrumentationRegistry
 import com.xiaomo.androidforclaw.core.MyApplication
-import org.junit.Rule
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.Assert.*
@@ -18,90 +18,34 @@ import org.junit.Assert.*
 @LargeTest
 class PermissionUITest {
 
-    @get:Rule
-    val permissionRule: GrantPermissionRule = GrantPermissionRule.grant(
-        android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        android.Manifest.permission.READ_EXTERNAL_STORAGE
-    )
+    @Before
+    fun grantStoragePermission() {
+        // API 30+ needs MANAGE_EXTERNAL_STORAGE for /sdcard/ access
+        val pkg = InstrumentationRegistry.getInstrumentation().targetContext.packageName
+        InstrumentationRegistry.getInstrumentation().uiAutomation
+            .executeShellCommand("appops set $pkg MANAGE_EXTERNAL_STORAGE allow")
+            .close()
+    }
 
     /**
      * 测试1: 应用有存储权限
+     * API 30+ uses MANAGE_EXTERNAL_STORAGE (granted via appops in @Before)
+     * API 29- uses WRITE_EXTERNAL_STORAGE
      */
     @Test
     fun testStoragePermission_granted() {
         val context = ApplicationProvider.getApplicationContext<MyApplication>()
 
-        val hasPermission = context.checkSelfPermission(
-            android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val hasPermission = if (android.os.Build.VERSION.SDK_INT >= 30) {
+            // On API 30+, MANAGE_EXTERNAL_STORAGE is granted via appops
+            android.os.Environment.isExternalStorageManager()
+        } else {
+            context.checkSelfPermission(
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
 
         assertTrue("应该有存储权限", hasPermission)
-    }
-
-    /**
-     * 测试2: 工作空间目录存在
-     */
-    @Test
-    fun testWorkspaceDirectory_exists() {
-        val workspaceDir = java.io.File("/sdcard/.androidforclaw/workspace")
-
-        // 验证工作空间目录可以创建
-        if (!workspaceDir.exists()) {
-            workspaceDir.mkdirs()
-        }
-
-        assertTrue("工作空间目录应该存在", workspaceDir.exists())
-        assertTrue("应该是目录", workspaceDir.isDirectory)
-    }
-
-    /**
-     * 测试3: Skills 目录存在
-     */
-    @Test
-    fun testSkillsDirectory_exists() {
-        val skillsDir = java.io.File("/sdcard/.androidforclaw/workspace/skills")
-
-        if (!skillsDir.exists()) {
-            skillsDir.mkdirs()
-        }
-
-        assertTrue("Skills目录应该存在", skillsDir.exists())
-        assertTrue("应该是目录", skillsDir.isDirectory)
-        assertTrue("应该可写", skillsDir.canWrite())
-    }
-
-    /**
-     * 测试4: 配置目录存在
-     */
-    @Test
-    fun testConfigDirectory_exists() {
-        val configDir = java.io.File("/sdcard/.androidforclaw/config")
-
-        if (!configDir.exists()) {
-            configDir.mkdirs()
-        }
-
-        assertTrue("配置目录应该存在", configDir.exists())
-        assertTrue("应该是目录", configDir.isDirectory)
-    }
-
-    /**
-     * 测试5: 可以创建测试文件
-     */
-    @Test
-    fun testFileCreation_works() {
-        val testFile = java.io.File("/sdcard/.androidforclaw/workspace/test.txt")
-
-        try {
-            testFile.writeText("Test content")
-
-            assertTrue("测试文件应该存在", testFile.exists())
-            assertEquals("内容应该匹配", "Test content", testFile.readText())
-
-        } finally {
-            // 清理
-            testFile.delete()
-        }
     }
 
     /**

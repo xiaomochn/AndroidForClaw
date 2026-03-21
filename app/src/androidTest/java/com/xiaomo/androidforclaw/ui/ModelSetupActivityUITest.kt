@@ -12,7 +12,8 @@ import androidx.test.espresso.assertion.ViewAssertions.*
 import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
-import com.draco.ladb.R
+import androidx.test.filters.SdkSuppress
+import com.xiaomo.androidforclaw.R
 import com.xiaomo.androidforclaw.config.ConfigLoader
 import com.xiaomo.androidforclaw.ui.activity.ModelSetupActivity
 import org.hamcrest.Matchers.*
@@ -42,6 +43,7 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 @LargeTest
+@SdkSuppress(maxSdkVersion = 35) // Espresso InputManager.getInstance() removed in API 36
 class ModelSetupActivityUITest {
 
     private var scenario: ActivityScenario<ModelSetupActivity>? = null

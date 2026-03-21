@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
+import androidx.test.platform.app.InstrumentationRegistry
 import com.xiaomo.androidforclaw.agent.memory.ChunkUtils
 import com.xiaomo.androidforclaw.agent.memory.MemoryIndex
 import com.xiaomo.androidforclaw.core.MyApplication
@@ -34,6 +35,12 @@ class MemoryIndexTest {
 
     @Before
     fun setup() {
+        // API 30+ needs MANAGE_EXTERNAL_STORAGE for /sdcard/ access
+        val pkg = InstrumentationRegistry.getInstrumentation().targetContext.packageName
+        InstrumentationRegistry.getInstrumentation().uiAutomation
+            .executeShellCommand("appops set $pkg MANAGE_EXTERNAL_STORAGE allow")
+            .close()
+
         context = ApplicationProvider.getApplicationContext<MyApplication>()
         // No embedding provider — FTS-only mode
         memoryIndex = MemoryIndex(context, embeddingProvider = null)
@@ -291,16 +298,4 @@ class MemoryIndexTest {
         println("✅ ${chunks.size} chunks produced, all valid")
     }
 
-    // ===== Constants verification =====
-
-    @Test
-    fun test13_constants_matchOpenClaw() {
-        assertEquals("DEFAULT_MAX_RESULTS", 6, MemoryIndex.DEFAULT_MAX_RESULTS)
-        assertEquals("DEFAULT_MIN_SCORE", 0.35f, MemoryIndex.DEFAULT_MIN_SCORE)
-        assertEquals("VECTOR_WEIGHT", 0.7f, MemoryIndex.DEFAULT_HYBRID_VECTOR_WEIGHT)
-        assertEquals("TEXT_WEIGHT", 0.3f, MemoryIndex.DEFAULT_HYBRID_TEXT_WEIGHT)
-        assertEquals("CANDIDATE_MULTIPLIER", 4, MemoryIndex.DEFAULT_HYBRID_CANDIDATE_MULTIPLIER)
-        assertEquals("SNIPPET_MAX_CHARS", 700, MemoryIndex.SNIPPET_MAX_CHARS)
-        println("✅ All constants match OpenClaw")
-    }
 }

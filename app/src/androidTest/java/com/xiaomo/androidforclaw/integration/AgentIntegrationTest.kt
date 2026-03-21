@@ -9,6 +9,7 @@ import com.xiaomo.androidforclaw.config.ConfigLoader
 import com.xiaomo.androidforclaw.core.MyApplication
 import com.xiaomo.androidforclaw.data.model.TaskDataManager
 import kotlinx.coroutines.runBlocking
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,6 +33,12 @@ class AgentIntegrationTest {
 
     @Before
     fun setup() {
+        // API 30+ needs MANAGE_EXTERNAL_STORAGE for /sdcard/ access
+        val pkg = InstrumentationRegistry.getInstrumentation().targetContext.packageName
+        InstrumentationRegistry.getInstrumentation().uiAutomation
+            .executeShellCommand("appops set $pkg MANAGE_EXTERNAL_STORAGE allow")
+            .close()
+
         context = ApplicationProvider.getApplicationContext<MyApplication>()
 
         // 创建测试配置文件

@@ -17,6 +17,7 @@ import com.xiaomo.androidforclaw.core.MyApplication
 import com.xiaomo.androidforclaw.ui.activity.MainActivity
 import com.xiaomo.androidforclaw.ui.activity.MainActivityCompose
 import org.junit.*
+import org.junit.Ignore
 import org.junit.Assert.*
 import org.junit.runner.RunWith
 import org.junit.runners.MethodSorters
@@ -37,6 +38,7 @@ import org.junit.runners.MethodSorters
 @RunWith(AndroidJUnit4::class)
 @LargeTest
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@Ignore("Requires real LLM API key and Compose on API <= 35")
 class ChatE2ETest {
 
     companion object {

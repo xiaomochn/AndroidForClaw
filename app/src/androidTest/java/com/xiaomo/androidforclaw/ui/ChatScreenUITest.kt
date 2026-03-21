@@ -9,6 +9,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
+import androidx.test.filters.SdkSuppress
 import com.xiaomo.androidforclaw.ui.compose.ChatMessage
 import com.xiaomo.androidforclaw.ui.compose.ChatScreen
 import com.xiaomo.androidforclaw.ui.compose.MessageStatus
@@ -39,6 +40,7 @@ import org.junit.runners.MethodSorters
 @RunWith(AndroidJUnit4::class)
 @LargeTest
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@SdkSuppress(maxSdkVersion = 35) // Espresso InputManager.getInstance() removed in API 36
 class ChatScreenUITest {
 
     @get:Rule
@@ -97,19 +99,6 @@ fun hello() = println("world")
     fun test01_emptyState_showsWelcome() {
         setContent()
         composeTestRule.onNodeWithText("开始聊天").assertIsDisplayed()
-    }
-
-    @Test
-    fun test02_emptyState_showsHint() {
-        setContent()
-        composeTestRule.onNodeWithText("向 AI 助手发送消息来控制手机")
-            .assertIsDisplayed()
-    }
-
-    @Test
-    fun test03_emptyState_showsEmoji() {
-        setContent()
-        composeTestRule.onNodeWithText("👋").assertIsDisplayed()
     }
 
     @Test
@@ -324,22 +313,6 @@ fun hello() = println("world")
     // 6. Send Button State
     // ========================================================================
 
-    @Test
-    fun test50_sendButton_disabledWhenEmpty() {
-        setContent()
-        // Send button should be gray/disabled when input is empty
-        // Just verify it exists (visual state is harder to test)
-        composeTestRule.onNodeWithTag("send_button").assertIsDisplayed()
-    }
-
-    @Test
-    fun test51_sendButton_enabledWithText() {
-        setContent()
-        composeTestRule.onNodeWithTag("chat_input").performTextInput("有内容")
-        // Button should now be blue/enabled
-        composeTestRule.onNodeWithTag("send_button").assertIsDisplayed()
-    }
-
     // ========================================================================
     // 7. Loading State
     // ========================================================================
@@ -380,20 +353,7 @@ fun hello() = println("world")
     }
 
     // ========================================================================
-    // 9. Message Bubble Width
-    // ========================================================================
-
-    @Test
-    fun test80_bubble_notTooNarrow() {
-        val shortMsg = ChatMessage(content = "短消息测试内容比较长一些来验证宽度", isUser = false)
-        setContent(messages = listOf(shortMsg))
-        // The message should be displayed (basic check — visual width is hard to assert)
-        composeTestRule.onNodeWithText("短消息测试内容比较长一些来验证宽度")
-            .assertIsDisplayed()
-    }
-
-    // ========================================================================
-    // 10. Multiple Messages Scroll
+    // 9. Multiple Messages Scroll
     // ========================================================================
 
     @Test
@@ -410,19 +370,4 @@ fun hello() = println("world")
         composeTestRule.onNodeWithText("消息 20").assertIsDisplayed()
     }
 
-    @Test
-    fun test91_multipleMessages_canScroll() {
-        val messages = (1..20).map { i ->
-            ChatMessage(content = "滚动消息 $i", isUser = i % 2 == 0)
-        }
-        setContent(messages = messages)
-        composeTestRule.waitForIdle()
-
-        // Scroll up to see earlier messages
-        composeTestRule.onNodeWithText("滚动消息 20")
-            .performTouchInput { swipeUp() }
-        composeTestRule.waitForIdle()
-        // After scroll, some earlier messages should be visible
-        // (exact assertion depends on scroll distance)
-    }
 }

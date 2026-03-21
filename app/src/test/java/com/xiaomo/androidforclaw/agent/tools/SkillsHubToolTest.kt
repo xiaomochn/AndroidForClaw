@@ -42,16 +42,4 @@ class SkillsHubToolTest {
         assertEquals("number", props["limit"]?.type)
     }
 
-    // ==================== SkillsInstallTool (schema only, no Context) ====================
-
-    // Note: SkillsInstallTool requires Android Context, so we only test schema here.
-    // Full execution tests are in instrumented tests.
-
-    // We can test the tool definition via reflection or by checking constants.
-
-    @Test
-    fun `install tool name is skills_install`() {
-        // Verify the constant name matches expectations
-        assertEquals("skills_install", "skills_install")
-    }
 }

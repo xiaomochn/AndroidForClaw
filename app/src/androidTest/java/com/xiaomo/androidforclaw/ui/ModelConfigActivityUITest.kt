@@ -15,7 +15,8 @@ import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
-import com.draco.ladb.R
+import androidx.test.filters.SdkSuppress
+import com.xiaomo.androidforclaw.R
 import com.xiaomo.androidforclaw.config.ProviderRegistry
 import com.xiaomo.androidforclaw.ui.activity.ModelConfigActivity
 import org.hamcrest.CoreMatchers.*
@@ -40,6 +41,7 @@ import org.junit.runners.MethodSorters
 @RunWith(AndroidJUnit4::class)
 @LargeTest
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@SdkSuppress(maxSdkVersion = 35) // Espresso InputManager.getInstance() removed in API 36
 class ModelConfigActivityUITest {
 
     @get:Rule

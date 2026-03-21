@@ -7,6 +7,7 @@ import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
+import androidx.test.filters.SdkSuppress
 import com.xiaomo.androidforclaw.ui.activity.ConfigActivity
 import org.junit.Rule
 import org.junit.Test
@@ -21,6 +22,7 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 @LargeTest
+@SdkSuppress(maxSdkVersion = 35) // Espresso InputManager.getInstance() removed in API 36
 class ConfigActivityUITest {
 
     @get:Rule
@@ -36,14 +38,6 @@ class ConfigActivityUITest {
     @Test
     fun testModelConfiguration_isVisible() {
         // 验证功能开关部分可见
-        onView(withText("功能开关"))
-            .check(matches(isDisplayed()))
-    }
-
-    @Test
-    fun testReasoningSwitch_isToggleable() {
-        // 测试功能开关交互
-        // 由于具体的开关内容会动态变化,这里只验证功能开关卡片存在
         onView(withText("功能开关"))
             .check(matches(isDisplayed()))
     }

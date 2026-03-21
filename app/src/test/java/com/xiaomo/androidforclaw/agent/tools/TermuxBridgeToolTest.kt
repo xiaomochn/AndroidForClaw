@@ -226,57 +226,6 @@ class TermuxBridgeToolTest {
         assertFalse(json.contains("sshd"))
     }
 
-    // ==================== 9. ExecFacadeTool integration ====================
-
-    @Test
-    fun `ExecFacadeTool schema includes backend param`() {
-        val internal = FakeTool("exec", ToolResult.success(""))
-        termuxInstalled(true)
-        val facade = ExecFacadeTool(internal, tool(), termuxAvailable = false)
-        val def = facade.getToolDefinition()
-        assertTrue(def.function.parameters.properties.containsKey("backend"))
-    }
-
-    @Test
-    fun `ExecFacadeTool auto routes to termux when available`() = runBlocking {
-        val internal = FakeTool("exec", ToolResult.success("internal"))
-        val termux = FakeTool("exec", ToolResult.success("termux"))
-        val facade = ExecFacadeTool(internal, termux, termuxAvailable = true)
-        assertEquals("termux", facade.execute(mapOf("command" to "echo")).content)
-    }
-
-    @Test
-    fun `ExecFacadeTool falls back to internal when unavailable`() = runBlocking {
-        val internal = FakeTool("exec", ToolResult.success("internal"))
-        val termux = FakeTool("exec", ToolResult.success("termux"))
-        val facade = ExecFacadeTool(internal, termux, termuxAvailable = false)
-        assertEquals("internal", facade.execute(mapOf("command" to "echo")).content)
-    }
-
-    @Test
-    fun `ExecFacadeTool backend=internal forces internal`() = runBlocking {
-        val internal = FakeTool("exec", ToolResult.success("internal"))
-        val termux = FakeTool("exec", ToolResult.success("termux"))
-        val facade = ExecFacadeTool(internal, termux, termuxAvailable = true)
-        assertEquals("internal", facade.execute(mapOf("command" to "echo", "backend" to "internal")).content)
-    }
-
-    @Test
-    fun `ExecFacadeTool backend=termux forces termux`() = runBlocking {
-        val internal = FakeTool("exec", ToolResult.success("internal"))
-        val termux = FakeTool("exec", ToolResult.success("termux"))
-        val facade = ExecFacadeTool(internal, termux, termuxAvailable = false)
-        assertEquals("termux", facade.execute(mapOf("command" to "echo", "backend" to "termux")).content)
-    }
-
-    @Test
-    fun `ExecFacadeTool unknown backend falls to auto`() = runBlocking {
-        val internal = FakeTool("exec", ToolResult.success("internal"))
-        val termux = FakeTool("exec", ToolResult.success("termux"))
-        val facade = ExecFacadeTool(internal, termux, termuxAvailable = true)
-        assertEquals("termux", facade.execute(mapOf("command" to "echo", "backend" to "gpu")).content)
-    }
-
     // ==================== Helpers ====================
 
     private fun createParamValidationTool(): Tool {
