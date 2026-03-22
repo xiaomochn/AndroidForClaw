@@ -1,6 +1,6 @@
 # 📱 AndroidForClaw
 
-[![Release](https://img.shields.io/badge/Release-v1.0.9-blue.svg)](https://github.com/SelectXn00b/AndroidForClaw/releases/latest)
+[![Release](https://img.shields.io/badge/Release-v1.3.0-blue.svg)](https://github.com/SelectXn00b/AndroidForClaw/releases/latest)
 [![Android](https://img.shields.io/badge/Android-8.0%2B-green.svg)](https://www.android.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -32,7 +32,7 @@ AI：→ 微信复制地址 → 打开高德 → 搜索 → 开始导航
 
 ### 🐧 执行代码
 
-Python、Node.js、Shell——直接在手机上跑：
+Shell 脚本直接在内置 Termux 中运行（Python、Node.js 需在设置中安装）：
 
 ```
 你：用 Python 帮我分析一下 Downloads 文件夹里的 CSV
@@ -266,7 +266,7 @@ git clone https://github.com/SelectXn00b/AndroidForClaw.git
 cd AndroidForClaw
 export JAVA_HOME=/path/to/jdk17
 ./gradlew assembleRelease
-adb install releases/AndroidForClaw-v1.0.9-release.apk
+adb install releases/AndroidForClaw-v1.3.0-release.apk
 ```
 
 ---

@@ -33,13 +33,6 @@ I/MyApplication: ✅ Gateway 服务已启动: ws://0.0.0.0:8765
 
 ### 2. 连接测试
 
-#### Python 客户端
-
-```bash
-# 修改手机 IP 后运行
-python3 test_gateway.py 192.168.1.100
-```
-
 #### WebSocket 命令行测试
 
 ```bash
@@ -291,10 +284,6 @@ async def test_agent():
 asyncio.run(test_agent())
 ```
 
-### 完整示例
-
-参考项目根目录的 `test_gateway.py`，包含所有接口的测试。
-
 ---
 
 ## 🔧 故障排查
@@ -431,7 +420,6 @@ ws.onmessage = (event) => {
 
 - [ARCHITECTURE.md](../ARCHITECTURE.md) - 架构设计
 - [CLAUDE.md](../CLAUDE.md) - 开发指南
-- [test_gateway.py](../test_gateway.py) - 完整测试示例
 
 ---
 

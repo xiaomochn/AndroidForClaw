@@ -10,12 +10,12 @@ AndroidForClaw workspace 对齐 OpenClaw 架构，为用户提供可直接访问
 
 | 特性 | OpenClaw | AndroidForClaw |
 |------|----------|----------------|
-| **Workspace 路径** | `~/.openclaw/workspace/` | `/sdcard/androidforclaw-workspace/` |
-| **Skills 路径** | `~/.openclaw/workspace/skills/` | `/sdcard/androidforclaw-workspace/skills/` |
+| **Workspace 路径** | `~/.openclaw/workspace/` | `/sdcard/.androidforclaw/workspace/` |
+| **Skills 路径** | `~/.openclaw/workspace/skills/` | `/sdcard/.androidforclaw/workspace/skills/` |
 | **访问方式** | 文件系统直接访问 | 文件管理器直接访问 |
 | **权限要求** | 文件系统权限 | MANAGE_EXTERNAL_STORAGE |
 
-### 为什么选择 `/sdcard/androidforclaw-workspace/`？
+### 为什么选择 `/sdcard/.androidforclaw/workspace/`？
 
 1. **用户可访问** - 位于外部存储根目录，任何文件管理器都能访问
 2. **独立目录** - 与 OpenClaw 类似，独立于应用数据目录
@@ -55,8 +55,8 @@ AndroidForClaw workspace 对齐 OpenClaw 架构，为用户提供可直接访问
 ```
 高 → 低
 
-1. Workspace Skills     /sdcard/androidforclaw-workspace/skills/     ← 用户自定义（最高优先级）
-2. Managed Skills       /sdcard/AndroidForClaw/.skills/              ← 包管理器安装
+1. Workspace Skills     /sdcard/.androidforclaw/workspace/skills/     ← 用户自定义（最高优先级）
+2. Managed Skills       /sdcard/.androidforclaw/.skills/              ← 包管理器安装
 3. Bundled Skills       app/src/main/assets/skills/                  ← 内置（只读）
 ```
 
@@ -69,7 +69,7 @@ AndroidForClaw workspace 对齐 OpenClaw 架构，为用户提供可直接访问
 **步骤**:
 
 1. 打开文件管理器（推荐使用 Solid Explorer、FX File Explorer 等）
-2. 导航到 `/sdcard/androidforclaw-workspace/skills/`
+2. 导航到 `/sdcard/.androidforclaw/workspace/skills/`
 3. 创建新目录，如 `my-skill/`
 4. 在目录内创建 `SKILL.md` 文件
 5. 编写 skill 内容（参考 OpenClaw 格式）
@@ -78,7 +78,7 @@ AndroidForClaw workspace 对齐 OpenClaw 架构，为用户提供可直接访问
 
 ```bash
 # 目录结构
-/sdcard/androidforclaw-workspace/skills/wechat-automation/
+/sdcard/.androidforclaw/workspace/skills/wechat-automation/
 └── SKILL.md
 ```
 
@@ -196,7 +196,7 @@ stop("消息发送成功")
 
 ```bash
 # 创建目录
-/sdcard/androidforclaw-workspace/skills/app-testing/
+/sdcard/.androidforclaw/workspace/skills/app-testing/
 └── SKILL.md  # 你的自定义版本
 ```
 
@@ -216,7 +216,7 @@ AndroidForClaw 支持 workspace skills 的热重载：
 
 ```bash
 # 使用 adb 备份
-adb pull /sdcard/androidforclaw-workspace/ ./backup/
+adb pull /sdcard/.androidforclaw/workspace/ ./backup/
 
 # 或使用文件管理器
 # 复制整个 androidforclaw-workspace 目录到电脑
@@ -238,7 +238,7 @@ adb push ./backup/androidforclaw-workspace/ /sdcard/
 
 ```bash
 # 在 workspace 目录初始化 Git
-cd /sdcard/androidforclaw-workspace/
+cd /sdcard/.androidforclaw/workspace/
 git init
 
 # 添加 .gitignore
@@ -339,7 +339,7 @@ metadata:
 复杂 skill 可以包含多个文件：
 
 ```
-/sdcard/androidforclaw-workspace/skills/complex-skill/
+/sdcard/.androidforclaw/workspace/skills/complex-skill/
 ├── SKILL.md          ← 主文件（必需）
 ├── scripts/
 │   ├── helper.js     ← JavaScript 脚本
@@ -391,7 +391,7 @@ This skill uses helper scripts:
 
 ```bash
 # 使用 adb
-adb shell mkdir -p /sdcard/androidforclaw-workspace/skills/
+adb shell mkdir -p /sdcard/.androidforclaw/workspace/skills/
 
 # 或使用文件管理器
 # 导航到 /sdcard/
@@ -402,7 +402,7 @@ adb shell mkdir -p /sdcard/androidforclaw-workspace/skills/
 
 **A**: 检查以下几点：
 
-1. 目录结构正确？`/sdcard/androidforclaw-workspace/skills/my-skill/SKILL.md`
+1. 目录结构正确？`/sdcard/.androidforclaw/workspace/skills/my-skill/SKILL.md`
 2. SKILL.md 文件名大小写正确？（必须是 `SKILL.md`）
 3. YAML frontmatter 格式正确？
 4. 查看日志：`adb logcat | grep SkillsLoader`
@@ -431,14 +431,14 @@ metadata:
 
 ### Q: 可以在 workspace 中使用子目录吗？
 
-**A**: 目前不支持嵌套子目录。所有 skills 必须在 `/sdcard/androidforclaw-workspace/skills/` 的第一级。
+**A**: 目前不支持嵌套子目录。所有 skills 必须在 `/sdcard/.androidforclaw/workspace/skills/` 的第一级。
 
 ```
 ✅ 正确:
-/sdcard/androidforclaw-workspace/skills/my-skill/SKILL.md
+/sdcard/.androidforclaw/workspace/skills/my-skill/SKILL.md
 
 ❌ 错误:
-/sdcard/androidforclaw-workspace/skills/category/my-skill/SKILL.md
+/sdcard/.androidforclaw/workspace/skills/category/my-skill/SKILL.md
 ```
 
 ### Q: Workspace 占用多少空间？

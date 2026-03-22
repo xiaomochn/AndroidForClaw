@@ -19,7 +19,7 @@ If this is the first time running on this device:
 ## Workspace Structure
 
 ```
-/data/data/com.agent.mobile/files/workspace/
+/sdcard/.androidforclaw/workspace/
 ├── memory/
 │   └── MEMORY.md          # Long-term facts
 ├── skills/

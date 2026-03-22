@@ -19,7 +19,7 @@ User → Channel → Gateway → Agent Runtime → Tools
 
 ### 1. App UI (Android Native)
 
-**入口**: MainActivity (Jetpack Compose 聊天界面)
+**入口**: MainActivityCompose (Jetpack Compose 聊天界面)
 
 **特点**:
 - ✅ 原生 Android 体验
@@ -34,10 +34,10 @@ User → Channel → Gateway → Agent Runtime → Tools
 
 **技术实现**:
 ```
-MainActivity → ChatViewModel → MainEntryNew.runWithSession()
+MainActivityCompose → ChatViewModel → MainEntryNew.runWithSession()
 ```
 
-**代码**: `app/src/main/java/com/agent/mobile/ui/activity/MainActivity.kt`
+**代码**: `app/src/main/java/com/agent/mobile/ui/activity/MainActivityCompose.kt`
 
 ---
 
@@ -79,8 +79,8 @@ WebUI → WebSocket → GatewayServer → MainEntryNew.runWithSession()
 **使用方式**:
 ```bash
 adb shell am broadcast \
-  -a com.agent.mobile.ACTION_EXECUTE_AGENT \
-  -p com.openclaw.phone.debug \
+  -a com.xiaomo.androidforclaw.ACTION_EXECUTE_AGENT \
+  -p com.xiaomo.androidforclaw.debug \
   --es message "你的消息"
 ```
 
@@ -89,11 +89,12 @@ adb shell am broadcast \
 ADB → AgentMessageReceiver → MainEntryNew.runWithSession()
 ```
 
-**代码**: `app/src/main/java/com/agent/mobile/core/AgentMessageReceiver.kt`
+**代码**: `app/src/main/java/com/xiaomo/androidforclaw/core/AgentMessageReceiver.kt`
 
-**测试脚本**:
-- `test_chat.sh` - 发送消息并查看日志
-- `test_webui_chat.sh` - 测试 WebUI 同步
+**测试**:
+```bash
+adb shell am broadcast -a PHONE_FORCLAW_SEND_MESSAGE --es message "测试" com.xiaomo.androidforclaw
+```
 
 ---
 

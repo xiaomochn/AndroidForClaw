@@ -11,7 +11,7 @@
 | OpenClaw | AndroidForClaw | 说明 |
 |----------|----------------|------|
 | `~/.openclaw/` | `/sdcard/.androidforclaw/` | 主目录（隐藏目录） |
-| `~/.openclaw/workspace/` | `/sdcard/androidforclaw-workspace/` | 用户工作区（可见） |
+| `~/.openclaw/workspace/` | `/sdcard/.androidforclaw/workspace/` | 用户工作区（可见） |
 | `~/.openclaw/skills/` | `/sdcard/.androidforclaw/skills/` | 托管 Skills |
 | `~/.openclaw/agents/` | `/sdcard/.androidforclaw/agents/` | Agent 数据 |
 | `~/.openclaw/openclaw.json` | `/sdcard/.androidforclaw/openclaw.json` | 主配置 |
@@ -309,7 +309,7 @@ android-xxxxxxxxxxxxx
 │   └── models.json            ← 保留作为可选配置
 └── ...
 
-/sdcard/androidforclaw-workspace/
+/sdcard/.androidforclaw/workspace/
 ├── skills/                    ← 移动自 AndroidForClaw/workspace/skills/
 ├── IDENTITY.md                ← 新增
 ├── BOOTSTRAP.md               ← 新增

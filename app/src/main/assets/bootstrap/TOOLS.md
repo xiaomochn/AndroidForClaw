@@ -6,7 +6,7 @@
 
 **Always observe before acting**:
 - `screenshot()` - Capture current screen state
-- `get_ui_tree()` - Get UI element hierarchy (future)
+- `get_ui_tree()` - Get UI element hierarchy
 
 **Best Practice**: Call `screenshot` before and after every action to verify state.
 

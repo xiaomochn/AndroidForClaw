@@ -192,11 +192,14 @@ response = requests.get('http://localhost:8080/api/device/status')
 print(response.json())
 ```
 
-### 使用测试脚本
+### 使用 curl 测试
 
-```python
-# test_gateway.py (已提供)
-python test_gateway.py
+```bash
+# 端口转发
+adb forward tcp:8080 tcp:8080
+
+# 测试 health 接口
+curl http://localhost:8080/api/health
 ```
 
 **输出**:
