@@ -96,30 +96,9 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.PhoneForClaw" />
 
-        <!-- 配置页面 -->
-        <activity
-            android:name="com.xiaomo.androidforclaw.ui.activity.ConfigActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.PhoneForClaw" />
-
         <!-- Skills 管理页面 -->
         <activity
             android:name="com.xiaomo.androidforclaw.ui.activity.SkillsActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.PhoneForClaw" />
-
-        <!-- Agent 测试页面 -->
-        <activity
-            android:name="com.xiaomo.androidforclaw.ui.activity.AgentTestActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.PhoneForClaw" />
-
-        <!-- 配置测试页面 -->
-        <activity
-            android:name="com.xiaomo.androidforclaw.config.ConfigTestActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.PhoneForClaw" />
@@ -196,18 +175,6 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.PhoneForClaw" />
 
-        <!-- Feishu 连接测试页面 -->
-        <activity
-            android:name="com.xiaomo.androidforclaw.ui.activity.FeishuTestActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.PhoneForClaw" />
-
-        <!-- 结果Activity -->
-        <activity
-            android:name="com.xiaomo.androidforclaw.ui.activity.ResultActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
 
         <!-- 前台服务（保活） -->
         <service
@@ -256,10 +223,9 @@
             <meta-data
                 android:name="android.view.im"
                 android:resource="@xml/methods" />
-        </service> <!-- AI测试Activity -->
-        <activity
-            android:name="com.xiaomo.androidforclaw.ui.activity.AITestActivity"
-            android:screenOrientation="portrait" /> <!-- 文件提供者 - 系统级权限 -->
+        </service>
+
+        <!-- 文件提供者 - 系统级权限 -->
         <provider
             android:name="com.xiaomo.androidforclaw.ClawFileProvider"
             android:authorities="${applicationId}.provider"

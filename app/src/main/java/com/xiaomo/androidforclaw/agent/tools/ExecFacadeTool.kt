@@ -14,17 +14,13 @@ import com.xiaomo.termux.EmbeddedTermuxRuntime
 import java.io.File
 
 /**
- * Single `exec` tool entry.
- *
- * Routing: auto-selects the best available shell backend.
- * Implementation details (embedded runtime vs Android shell) are invisible to the agent.
+ * Single `exec` tool — runs commands via Embedded Termux Runtime.
  */
 class ExecFacadeTool(
     context: Context,
     workingDir: String? = null
 ) : Tool {
 
-    private val internalExec: Tool = ExecTool(workingDir = workingDir)
     private val defaultWorkingDir: File? = workingDir?.let { File(it) }
 
     override val name: String = "exec"
@@ -54,16 +50,6 @@ class ExecFacadeTool(
         val command = args["command"] as? String
             ?: return ToolResult.error("Missing required parameter: command")
         val timeout = (args["timeout"] as? Number)?.toLong() ?: 120_000
-
-        // Auto: prefer embedded runtime when ready
-        return if (EmbeddedTermuxRuntime.isReady()) {
-            executeEmbedded(command, timeout, args)
-        } else {
-            internalExec.execute(args)
-        }
-    }
-
-    private suspend fun executeEmbedded(command: String, timeout: Long, args: Map<String, Any?>): ToolResult {
         val workDir = (args["working_dir"] as? String)?.let { File(it) } ?: defaultWorkingDir
 
         val result = EmbeddedTermuxRuntime.exec(command, timeout, workingDir = workDir)
