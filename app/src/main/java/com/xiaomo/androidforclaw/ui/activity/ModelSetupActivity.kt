@@ -145,10 +145,33 @@ class ModelSetupActivity : AppCompatActivity() {
             title = "模型设置"
         }
 
+        // Apply navigation bar insets to bottom button bar so it won't be obscured
+        applyNavigationBarInsets()
+
         setupDefaultMode()
         setupAdvancedToggle()
         setupProviderSelection()
         setupButtons()
+    }
+
+    /**
+     * Ensure the bottom button bar respects the system navigation bar height.
+     */
+    private fun applyNavigationBarInsets() {
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.layoutBottomButtons) { view, windowInsets ->
+            val navBarInsets = windowInsets.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars())
+            view.setPadding(
+                view.paddingLeft,
+                view.paddingTop,
+                view.paddingRight,
+                16.dp(this) + navBarInsets.bottom
+            )
+            windowInsets
+        }
+    }
+
+    private fun Int.dp(context: android.content.Context): Int {
+        return (this * context.resources.displayMetrics.density + 0.5f).toInt()
     }
 
     /**
