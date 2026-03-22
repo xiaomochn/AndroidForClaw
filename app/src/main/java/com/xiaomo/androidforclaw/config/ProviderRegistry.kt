@@ -205,7 +205,7 @@ object ProviderRegistry {
             tutorialUrl = obj.optString("tutorialUrl", ""),
             presetModels = models,
             supportsDiscovery = obj.optBoolean("supportsDiscovery", false),
-            discoveryEndpoint = obj.optString("discoveryEndpoint", "/v1/models"),
+            discoveryEndpoint = obj.optString("discoveryEndpoint", "/models"),
             group = group,
             order = obj.optInt("order", 100)
         )
@@ -279,7 +279,7 @@ data class ProviderDefinition(
     val tutorialUrl: String = "",
     val presetModels: List<PresetModel> = emptyList(),
     val supportsDiscovery: Boolean = false,
-    val discoveryEndpoint: String = "/v1/models",
+    val discoveryEndpoint: String = "/models",
     val group: ProviderGroup = ProviderGroup.PRIMARY,
     val order: Int = 100
 )

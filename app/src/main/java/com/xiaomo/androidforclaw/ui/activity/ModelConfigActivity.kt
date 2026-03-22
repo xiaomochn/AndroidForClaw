@@ -23,8 +23,10 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.xiaomo.androidforclaw.config.*
 import kotlinx.coroutines.*
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
@@ -355,6 +357,9 @@ class ModelConfigActivity : AppCompatActivity() {
 
         // Save button
         binding.btnSave.setOnClickListener { saveProviderConfig(provider) }
+
+        // Test connection button
+        binding.btnTestConnection.setOnClickListener { testConnection(provider) }
     }
 
     private fun buildModelRadioGroup(models: List<PresetModel>) {
@@ -449,6 +454,187 @@ class ModelConfigActivity : AppCompatActivity() {
                 binding.btnDiscoverModels.isEnabled = true
                 binding.btnDiscoverModels.text = "🔍 获取可用模型"
             }
+        }
+    }
+
+    // ========== Connection Test ==========
+
+    private fun testConnection(provider: ProviderDefinition) {
+        val apiKey = binding.etApiKey.text?.toString()?.trim()
+        if (provider.keyRequired && apiKey.isNullOrBlank()) {
+            Toast.makeText(this, "请先填写 API Key", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Determine model to test with
+        val modelId = selectedModelId
+        if (modelId.isNullOrBlank()) {
+            Toast.makeText(this, "请先选择一个模型", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val baseUrl = if (advancedExpanded) {
+            binding.etBaseUrl.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
+        } else null
+        val effectiveBaseUrl = (baseUrl ?: provider.baseUrl).trimEnd('/')
+
+        binding.btnTestConnection.isEnabled = false
+        binding.btnTestConnection.text = "测试中..."
+
+        scope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    performConnectionTest(effectiveBaseUrl, provider, apiKey, modelId)
+                }
+                AlertDialog.Builder(this@ModelConfigActivity)
+                    .setTitle("✅ 连接成功")
+                    .setMessage(result)
+                    .setPositiveButton("确定", null)
+                    .show()
+            } catch (e: Exception) {
+                Log.e(TAG, "Connection test failed", e)
+                AlertDialog.Builder(this@ModelConfigActivity)
+                    .setTitle("❌ 连接失败")
+                    .setMessage("${e.message}")
+                    .setPositiveButton("确定", null)
+                    .show()
+            } finally {
+                binding.btnTestConnection.isEnabled = true
+                binding.btnTestConnection.text = "🔗 测试连接"
+            }
+        }
+    }
+
+    private fun performConnectionTest(
+        baseUrl: String,
+        provider: ProviderDefinition,
+        apiKey: String?,
+        modelId: String
+    ): String {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+
+        // Build chat completion request
+        val chatUrl = when (provider.api) {
+            ModelApi.ANTHROPIC_MESSAGES -> "$baseUrl/v1/messages"
+            ModelApi.GOOGLE_GENERATIVE_AI -> "$baseUrl/models/$modelId:generateContent?key=$apiKey"
+            ModelApi.OLLAMA -> "$baseUrl/api/chat"
+            else -> "$baseUrl/chat/completions"
+        }
+
+        val requestBody = when (provider.api) {
+            ModelApi.ANTHROPIC_MESSAGES -> JSONObject().apply {
+                put("model", modelId)
+                put("max_tokens", 10)
+                put("messages", org.json.JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("role", "user")
+                        put("content", "Hi")
+                    })
+                })
+            }
+            ModelApi.GOOGLE_GENERATIVE_AI -> JSONObject().apply {
+                put("contents", org.json.JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("parts", org.json.JSONArray().apply {
+                            put(JSONObject().apply { put("text", "Hi") })
+                        })
+                    })
+                })
+                put("generationConfig", JSONObject().apply {
+                    put("maxOutputTokens", 10)
+                })
+            }
+            ModelApi.OLLAMA -> JSONObject().apply {
+                put("model", modelId)
+                put("messages", org.json.JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("role", "user")
+                        put("content", "Hi")
+                    })
+                })
+                put("stream", false)
+            }
+            else -> JSONObject().apply {
+                put("model", modelId)
+                put("max_tokens", 10)
+                put("messages", org.json.JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("role", "user")
+                        put("content", "Hi")
+                    })
+                })
+            }
+        }
+
+        val mediaType = "application/json; charset=utf-8".toMediaType()
+        val body = requestBody.toString().toRequestBody(mediaType)
+
+        val requestBuilder = Request.Builder().url(chatUrl).post(body)
+
+        // Add auth headers
+        when {
+            provider.api == ModelApi.GOOGLE_GENERATIVE_AI -> {
+                // Google uses key in URL query param
+            }
+            !provider.authHeader && !apiKey.isNullOrBlank() -> {
+                requestBuilder.addHeader("x-api-key", apiKey)
+            }
+            !apiKey.isNullOrBlank() -> {
+                requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+            }
+        }
+
+        // Anthropic needs version header
+        if (provider.api == ModelApi.ANTHROPIC_MESSAGES) {
+            requestBuilder.addHeader("anthropic-version", "2023-06-01")
+        }
+
+        // Custom headers from provider
+        provider.headers?.forEach { (key, value) ->
+            requestBuilder.addHeader(key, value)
+        }
+
+        requestBuilder.addHeader("Content-Type", "application/json")
+
+        val response = client.newCall(requestBuilder.build()).execute()
+        val responseBody = response.body?.string() ?: ""
+
+        if (!response.isSuccessful) {
+            val errorMsg = try {
+                val json = JSONObject(responseBody)
+                json.optJSONObject("error")?.optString("message")
+                    ?: json.optString("message")
+                    ?: responseBody.take(200)
+            } catch (_: Exception) {
+                responseBody.take(200)
+            }
+            throw Exception("HTTP ${response.code}: $errorMsg")
+        }
+
+        // Parse response to confirm we got a valid reply
+        val json = JSONObject(responseBody)
+        val replyPreview = when (provider.api) {
+            ModelApi.ANTHROPIC_MESSAGES -> {
+                json.optJSONArray("content")?.optJSONObject(0)?.optString("text") ?: "OK"
+            }
+            ModelApi.GOOGLE_GENERATIVE_AI -> {
+                json.optJSONArray("candidates")?.optJSONObject(0)
+                    ?.optJSONObject("content")?.optJSONArray("parts")
+                    ?.optJSONObject(0)?.optString("text") ?: "OK"
+            }
+            else -> {
+                json.optJSONArray("choices")?.optJSONObject(0)
+                    ?.optJSONObject("message")?.optString("content") ?: "OK"
+            }
+        }
+
+        return buildString {
+            appendLine("模型: $modelId")
+            appendLine("API: ${provider.api}")
+            appendLine("响应: ${replyPreview.take(100)}")
         }
     }
 
