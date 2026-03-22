@@ -158,7 +158,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ChatThreadSelector(
+internal fun ChatThreadSelector(
   sessionKey: String,
   sessions: List<ChatSessionEntry>,
   mainSessionKey: String,
